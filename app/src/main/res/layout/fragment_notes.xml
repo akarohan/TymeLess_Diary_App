@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/greyback"
+    android:background="@android:color/transparent"
     tools:context=".ui.notes.NotesFragment">
 
     <TextView
@@ -24,6 +24,7 @@
         android:id="@+id/notesRecyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@android:color/transparent"
         app:layout_constraintTop_toBottomOf="@id/notesHeader"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

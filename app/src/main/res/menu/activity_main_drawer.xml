@@ -7,31 +7,39 @@
         <item
             android:id="@+id/nav_home"
             android:icon="@drawable/ic_home"
-            android:title="@string/menu_home" />
+            android:title="Home" />
+        
         <item
             android:id="@+id/nav_settings"
             android:icon="@drawable/ic_settings"
             android:title="Account Settings" />
+        
         <item
             android:id="@+id/nav_customize_login"
             android:icon="@drawable/ic_pen_black"
-            android:title="Customize Login Page" />
-        <item
-            android:id="@+id/nav_change_theme"
-            android:icon="@drawable/ic_palette_modern"
-            android:title="Change theme color" />
+            android:title="Customise Login Page" />
+        
+
+        
         <item
             android:id="@+id/nav_change_theme_pic"
-            android:icon="@drawable/ic_menu_camera"
-            android:title="Change Theme Pic" />
+            android:icon="@drawable/ic_palette_black"
+            android:title="Change Theme Picture" />
+        
         <item
             android:id="@+id/nav_backup_restore"
             android:icon="@drawable/ic_backup"
-            android:title="Backup and Restore" />
-
+            android:title="Backup And Restore" />
+        
+        <item
+            android:id="@+id/nav_recycle_bin"
+            android:icon="@drawable/ic_dustbin_clean"
+            android:title="Recycle Bin" />
+        
         <item
             android:id="@+id/nav_logout"
             android:icon="@drawable/ic_logout_black"
             android:title="Log Out" />
     </group>
-</menu>
+
+</menu> 

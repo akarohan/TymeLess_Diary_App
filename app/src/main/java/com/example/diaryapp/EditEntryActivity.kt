@@ -9,7 +9,7 @@ import kotlinx.coroutines.*
 import androidx.lifecycle.lifecycleScope
 import android.widget.EditText
 import android.widget.Button
-import androidx.appcompat.widget.Toolbar
+
 import android.widget.TextView
 import android.widget.NumberPicker
 import android.net.Uri
@@ -80,6 +80,7 @@ class EditEntryActivity : AppCompatActivity() {
     private lateinit var btnMic: ImageButton
     private val imageUris = mutableListOf<Uri>()
     private val audioItems = mutableListOf<AudioItem>()
+    private var currentMood = 1 // 0 = sad, 1 = happy
 
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -95,8 +96,12 @@ class EditEntryActivity : AppCompatActivity() {
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
         if (success && imageUri != null) {
-            imageUris.add(imageUri!!)
-            imageBlockAdapter.notifyItemInserted(imageUris.size - 1)
+            try {
+                imageUris.add(imageUri!!)
+                imageBlockAdapter.notifyItemInserted(imageUris.size - 1)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error adding camera image", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -104,10 +109,9 @@ class EditEntryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_entry)
         
-        // Set theme color only on the app bar (header)
-        val themeColor = ThemeUtils.getCurrentThemeColor(this)
-        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-        toolbar.setBackgroundColor(themeColor)
+        // Apply theme and refresh edit text colors
+        ThemeManager.applyTheme(this)
+        ThemeManager.refreshEditTextColors(this)
         
         mainEditText = findViewById(R.id.mainEditText)
 
@@ -140,40 +144,18 @@ class EditEntryActivity : AppCompatActivity() {
                 imageBlockAdapter.notifyDataSetChanged()
                 audioChipAdapter.notifyDataSetChanged()
                 
-                // Load mood value
-                val moodSeekBar = findViewById<android.widget.SeekBar>(R.id.moodSeekBar)
-                val moodEmojiImageView = findViewById<android.widget.ImageView>(R.id.moodEmojiImageView)
-                val moodDrawables = arrayOf(
-                    R.drawable.ic_mood_neg5, // 0: most negative (red)
-                    R.drawable.ic_mood_neg4, // 1
-                    R.drawable.ic_mood_neg3, // 2
-                    R.drawable.ic_mood_neg2, // 3
-                    R.drawable.ic_mood_neg1, // 4
-                    R.drawable.ic_mood_0,    // 5: neutral (black, center)
-                    R.drawable.ic_mood_1,    // 6
-                    R.drawable.ic_mood_2,    // 7
-                    R.drawable.ic_mood_3,    // 8
-                    R.drawable.ic_mood_4,    // 9
-                    R.drawable.ic_mood_5     // 10: most positive (green)
-                )
-                moodEmojiImageView.setImageResource(moodDrawables[5])
-                moodSeekBar.progress = entry.mood
-                val rootLayout = findViewById<View>(R.id.rootLayout)
-                val moodColors = arrayOf(
-                    android.graphics.Color.parseColor("#D32F2F"), // very sad (red)
-                    android.graphics.Color.parseColor("#E57373"), // sad
-                    android.graphics.Color.parseColor("#FFB300"), // less sad/orange
-                    android.graphics.Color.parseColor("#FFD54F"), // neutral yellow
-                    android.graphics.Color.parseColor("#FFF176"), // neutral
-                    ContextCompat.getColor(this@EditEntryActivity, R.color.greyback), // neutral/black (original grey)
-                    android.graphics.Color.parseColor("#90EE90"), // light green
-                    android.graphics.Color.parseColor("#66BB6A"), // medium-light green
-                    android.graphics.Color.parseColor("#43A047"), // medium green
-                    android.graphics.Color.parseColor("#388E3C"), // grass green
-                    android.graphics.Color.parseColor("#228B22")  // very happy (deep green)
-                )
-                rootLayout.setBackgroundColor(moodColors[entry.mood])
+                // Load mood value - handle both old 11-value system and new 2-value system
+                val oldMood = entry.mood
+                currentMood = when {
+                    oldMood <= 1 -> oldMood // Already in new 2-value system (0 or 1)
+                    oldMood <= 5 -> 0 // Old system: 0-5 = sad
+                    else -> 1 // Old system: 6-10 = happy
+                }
+
             } else {
+                // Initialize with sad mood for new entries
+                currentMood = 0
+                
                 titleEditText.setText("")
                 mainEditText.setText("")
                 entryId = null
@@ -214,8 +196,17 @@ class EditEntryActivity : AppCompatActivity() {
 
         imagesRecyclerView = findViewById(R.id.imagesRecyclerView)
         imageBlockAdapter = ImageBlockAdapter(imageUris) { position ->
-            imageUris.removeAt(position)
-            imageBlockAdapter.notifyItemRemoved(position)
+            android.util.Log.d("EditEntryActivity", "Delete callback triggered for position: $position")
+            android.util.Log.d("EditEntryActivity", "Current imageUris size: ${imageUris.size}")
+            if (position >= 0 && position < imageUris.size) {
+                val removedUri = imageUris[position]
+                android.util.Log.d("EditEntryActivity", "Removing URI: $removedUri")
+                imageUris.removeAt(position)
+                imageBlockAdapter.notifyItemRemoved(position)
+                android.util.Log.d("EditEntryActivity", "Successfully removed image at position $position")
+            } else {
+                android.util.Log.e("EditEntryActivity", "Invalid position for deletion: $position, list size: ${imageUris.size}")
+            }
         }
         imagesRecyclerView.layoutManager = GridLayoutManager(this, 2)
         imagesRecyclerView.adapter = imageBlockAdapter
@@ -233,7 +224,7 @@ class EditEntryActivity : AppCompatActivity() {
                     imageUri = photoUri
                     cameraLauncher.launch(photoUri)
                 } else {
-                    Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to create image file. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -251,9 +242,9 @@ class EditEntryActivity : AppCompatActivity() {
 
         setupFormatButtons()
 
-        val btnUnderline = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnUnderline)
+        val btnUnderline = findViewById<TextView>(R.id.btnUnderline)
         btnUnderline.paintFlags = btnUnderline.paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
-        val btnStrikethrough = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnStrikethrough)
+        val btnStrikethrough = findViewById<TextView>(R.id.btnStrikethrough)
         btnStrikethrough.paintFlags = btnStrikethrough.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
 
         btnMic = findViewById(R.id.btnMic)
@@ -276,89 +267,20 @@ class EditEntryActivity : AppCompatActivity() {
             onPlayPause = { item, position -> handlePlayPause(item, position) },
             onDelete = { item, position -> handleDeleteAudio(item, position) }
         )
-        audioRecyclerView.layoutManager = StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
+        audioRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         audioRecyclerView.adapter = audioChipAdapter
 
-        // Mood slider setup
-        val moodSeekBar = findViewById<android.widget.SeekBar>(R.id.moodSeekBar)
-        val moodThumbCard = findViewById<androidx.cardview.widget.CardView>(R.id.moodThumbCard)
-        val moodEmojiImageView = findViewById<android.widget.ImageView>(R.id.moodEmojiImageView)
-        val moodDrawables = arrayOf(
-            R.drawable.ic_mood_neg5, // 0: most negative (red)
-            R.drawable.ic_mood_neg4, // 1
-            R.drawable.ic_mood_neg3, // 2
-            R.drawable.ic_mood_neg2, // 3
-            R.drawable.ic_mood_neg1, // 4
-            R.drawable.ic_mood_0,    // 5: neutral (black, center)
-            R.drawable.ic_mood_1,    // 6
-            R.drawable.ic_mood_2,    // 7
-            R.drawable.ic_mood_3,    // 8
-            R.drawable.ic_mood_4,    // 9
-            R.drawable.ic_mood_5     // 10: most positive (green)
-        )
-        moodSeekBar.max = 10
-        moodSeekBar.progress = 5
 
-        // Set default emoji for new entries
-        moodEmojiImageView.setImageResource(moodDrawables[5])
-        moodSeekBar.progress = 5
 
-        // Mood slider color interpolation (light green to grass green from center to right)
-        val lightGreen = android.graphics.Color.parseColor("#90EE90")
-        val grassGreen = android.graphics.Color.parseColor("#228B22")
-
-        val moodSliderFrame = findViewById<View>(R.id.moodSliderFrame)
-        val moodColors = arrayOf(
-            android.graphics.Color.parseColor("#D32F2F"), // very sad (red)
-            android.graphics.Color.parseColor("#E57373"), // sad
-            android.graphics.Color.parseColor("#FFB300"), // less sad/orange
-            android.graphics.Color.parseColor("#FFD54F"), // neutral yellow
-            android.graphics.Color.parseColor("#FFF176"), // neutral
-            ContextCompat.getColor(this, R.color.greyback), // neutral/black (original grey)
-            android.graphics.Color.parseColor("#90EE90"), // light green
-            android.graphics.Color.parseColor("#66BB6A"), // medium-light green
-            android.graphics.Color.parseColor("#43A047"), // medium green
-            android.graphics.Color.parseColor("#388E3C"), // grass green
-            android.graphics.Color.parseColor("#228B22")  // very happy (deep green)
-        )
-
-        moodSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
-                moodEmojiImageView.setImageResource(moodDrawables[progress])
-                moodEmojiImageView.clearColorFilter()
-                val rootLayout = findViewById<View>(R.id.rootLayout)
-                rootLayout.setBackgroundColor(moodColors[progress])
-                seekBar?.let {
-                    val availableWidth = it.width - it.paddingLeft - it.paddingRight
-                    val max = it.max
-                    val percent = progress.toFloat() / max
-                    val stepWidth = availableWidth / max.toFloat()
-                    val left = it.paddingLeft + percent * availableWidth - (moodThumbCard.width / 2) + stepWidth
-                    moodThumbCard.translationX = left
-                }
-            }
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
-        })
-
-        // Initial position after layout
-        moodSeekBar.post {
-            val availableWidth = moodSeekBar.width - moodSeekBar.paddingLeft - moodSeekBar.paddingRight
-            val max = moodSeekBar.max
-            val percent = moodSeekBar.progress.toFloat() / max
-            val stepWidth = availableWidth / max.toFloat()
-            val left = moodSeekBar.paddingLeft + percent * availableWidth - (moodThumbCard.width / 2) + stepWidth
-            moodThumbCard.translationX = left
-        }
-
-        setSupportActionBar(toolbar)
-        supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_back_circle_white)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener { finish() }
+        // Set up back button
+        val backButton = findViewById<ImageButton>(R.id.backButton)
+        backButton.setOnClickListener { finish() }
     }
 
     override fun onResume() {
         super.onResume()
+        // Refresh edit text colors in case theme changed while activity was in background
+        ThemeManager.refreshEditTextColors(this)
     }
 
     override fun onPause() {
@@ -380,8 +302,7 @@ class EditEntryActivity : AppCompatActivity() {
         val imagePaths = imageUris.map { uri ->
             if (uri.scheme == "file") uri.path!! else uri.toString()
         }
-        val moodSeekBar = findViewById<android.widget.SeekBar>(R.id.moodSeekBar)
-        val currentMood = moodSeekBar.progress
+        // currentMood is already defined in the mood toggle setup
         
         val entry = if (entryId != null) {
             DiaryEntry(
@@ -429,22 +350,34 @@ class EditEntryActivity : AppCompatActivity() {
         chip.text = format.format(calendar.time)
     }
 
+
+
     private fun createImageUri(): Uri? {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "new_image_${System.currentTimeMillis()}.jpg")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        return try {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "new_image_${System.currentTimeMillis()}.jpg")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
-        return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
     }
 
     private fun copyUriToInternalStorage(uri: Uri): String? {
         return try {
             val inputStream = contentResolver.openInputStream(uri)
+            if (inputStream == null) {
+                return null
+            }
+            
             val file = java.io.File(filesDir, "image_${System.currentTimeMillis()}.jpg")
             val outputStream = java.io.FileOutputStream(file)
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
+            inputStream.copyTo(outputStream)
+            inputStream.close()
             outputStream.close()
+            
             file.absolutePath
         } catch (e: Exception) {
             e.printStackTrace()
@@ -453,10 +386,10 @@ class EditEntryActivity : AppCompatActivity() {
     }
 
     private fun setupFormatButtons() {
-        val btnBold = findViewById<MaterialButton>(R.id.btnBold)
-        val btnItalic = findViewById<MaterialButton>(R.id.btnItalic)
-        val btnUnderline = findViewById<MaterialButton>(R.id.btnUnderline)
-        val btnStrikethrough = findViewById<MaterialButton>(R.id.btnStrikethrough)
+        val btnBold = findViewById<TextView>(R.id.btnBold)
+        val btnItalic = findViewById<TextView>(R.id.btnItalic)
+        val btnUnderline = findViewById<TextView>(R.id.btnUnderline)
+        val btnStrikethrough = findViewById<TextView>(R.id.btnStrikethrough)
 
         btnBold.setOnClickListener {
             val start = mainEditText.selectionStart
@@ -528,7 +461,7 @@ class EditEntryActivity : AppCompatActivity() {
         })
     }
 
-    private fun toggleStyle(style: Int, button: MaterialButton) {
+    private fun toggleStyle(style: Int, button: TextView) {
         val start = mainEditText.selectionStart
         val end = mainEditText.selectionEnd
         if (start == end) return // No selection
@@ -548,7 +481,7 @@ class EditEntryActivity : AppCompatActivity() {
         updateButtonStyle(button, !exists)
     }
 
-    private fun toggleUnderline(button: MaterialButton) {
+    private fun toggleUnderline(button: TextView) {
         val start = mainEditText.selectionStart
         val end = mainEditText.selectionEnd
         if (start == end) return
@@ -566,7 +499,7 @@ class EditEntryActivity : AppCompatActivity() {
         updateButtonStyle(button, !exists)
     }
 
-    private fun toggleStrikethrough(button: MaterialButton) {
+    private fun toggleStrikethrough(button: TextView) {
         val start = mainEditText.selectionStart
         val end = mainEditText.selectionEnd
         if (start == end) return
@@ -584,15 +517,21 @@ class EditEntryActivity : AppCompatActivity() {
         updateButtonStyle(button, !exists)
     }
 
-    private fun updateButtonStyle(button: MaterialButton, isActive: Boolean) {
+    private fun updateButtonStyle(button: TextView, isActive: Boolean) {
         if (isActive) {
-            button.setBackgroundColor(ContextCompat.getColor(this, R.color.black))
+            if (button.id == R.id.btnStrikethrough) {
+                button.background = ContextCompat.getDrawable(this, R.drawable.bius_last_button_active_background)
+            } else {
+                button.background = ContextCompat.getDrawable(this, R.drawable.bius_button_active_background)
+            }
             button.setTextColor(ContextCompat.getColor(this, R.color.white))
-            button.iconTint = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
         } else {
-            button.setBackgroundColor(ContextCompat.getColor(this, R.color.white))
+            if (button.id == R.id.btnStrikethrough) {
+                button.background = ContextCompat.getDrawable(this, R.drawable.bius_last_button_inactive_background)
+            } else {
+                button.background = ContextCompat.getDrawable(this, R.drawable.bius_button_inactive_background)
+            }
             button.setTextColor(ContextCompat.getColor(this, R.color.black))
-            button.iconTint = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.black))
         }
     }
 
@@ -670,20 +609,33 @@ class EditEntryActivity : AppCompatActivity() {
     }
 
     private fun playAudio(item: AudioItem, position: Int) {
-        stopAudioPlayback()
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(item.filePath)
-            prepare()
-            start()
-            setOnCompletionListener {
-                audioItems[position] = item.copy(isPlaying = false)
-                audioChipAdapter.notifyItemChanged(position)
-                currentlyPlayingIndex = null
-            }
+        // Check if the audio file exists
+        val audioFile = File(item.filePath)
+        if (!audioFile.exists()) {
+            android.util.Log.e("EditEntryActivity", "Audio file does not exist: ${item.filePath}")
+            Toast.makeText(this, "Audio file not found", Toast.LENGTH_SHORT).show()
+            return
         }
-        audioItems[position] = item.copy(isPlaying = true)
-        audioChipAdapter.notifyItemChanged(position)
-        currentlyPlayingIndex = position
+        
+        try {
+            stopAudioPlayback()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(item.filePath)
+                prepare()
+                start()
+                setOnCompletionListener {
+                    audioItems[position] = item.copy(isPlaying = false)
+                    audioChipAdapter.notifyItemChanged(position)
+                    currentlyPlayingIndex = null
+                }
+            }
+            audioItems[position] = item.copy(isPlaying = true)
+            audioChipAdapter.notifyItemChanged(position)
+            currentlyPlayingIndex = position
+        } catch (e: Exception) {
+            android.util.Log.e("EditEntryActivity", "Error playing audio: ${e.message}")
+            Toast.makeText(this, "Error playing audio file", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun stopAudioPlayback() {
@@ -713,6 +665,12 @@ class EditEntryActivity : AppCompatActivity() {
 
     private fun getAudioDurationFormatted(filePath: String): String {
         return try {
+            val audioFile = File(filePath)
+            if (!audioFile.exists()) {
+                android.util.Log.e("EditEntryActivity", "Audio file does not exist for duration check: $filePath")
+                return "00:00"
+            }
+            
             val mp = MediaPlayer()
             mp.setDataSource(filePath)
             mp.prepare()
@@ -722,6 +680,7 @@ class EditEntryActivity : AppCompatActivity() {
             val seconds = ((durationMs / 1000) % 60)
             String.format("%02d:%02d", minutes, seconds)
         } catch (e: Exception) {
+            android.util.Log.e("EditEntryActivity", "Error getting audio duration: ${e.message}")
             "00:00"
         }
     }
@@ -755,10 +714,10 @@ class EditEntryActivity : AppCompatActivity() {
                     imageUri = photoUri
                     cameraLauncher.launch(photoUri)
                 } else {
-                    Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to create image file. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Camera permission denied. Please enable camera access in settings.", Toast.LENGTH_LONG).show()
             }
         }
     }

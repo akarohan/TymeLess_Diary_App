@@ -64,21 +64,31 @@ class AuthActivity : AppCompatActivity() {
                 imageView?.visibility = View.GONE
             }
         } else {
-            // Default video
-            videoView.setVideoURI(Uri.parse("android.resource://" + packageName + "/raw/login_page_into_anime"))
-            videoView.setOnPreparedListener { mp ->
-                mp.isLooping = true
-                mp.setVolume(0f, 0f)
+            // Use a static image instead of video to save storage
+            if (imageView != null) {
+                imageView.setImageResource(R.drawable.bg_login_static)
+                imageView.visibility = View.VISIBLE
+                videoView.visibility = View.GONE
+            } else {
+                // Fallback to video only if image view doesn't exist
+                videoView.setVideoURI(Uri.parse("android.resource://" + packageName + "/raw/login_page_into_anime"))
+                videoView.setOnPreparedListener { mp ->
+                    mp.isLooping = true
+                    mp.setVolume(0f, 0f)
+                }
+                videoView.start()
+                videoView.visibility = View.VISIBLE
+                imageView?.visibility = View.GONE
             }
-            videoView.start()
-            videoView.visibility = View.VISIBLE
-            imageView?.visibility = View.GONE
         }
 
         usernameInput = findViewById(R.id.usernameInput)
         passwordInput = findViewById(R.id.passwordInput)
         submitButton = findViewById(R.id.submitButton)
         signupButton = findViewById(R.id.signupButton)
+        
+        // Initialize logo based on current theme
+        updateAuthLogo()
 
         val savedUsername = prefs.getString("username", null)
         val savedPassword = prefs.getString("password_hash", null)
@@ -222,5 +232,14 @@ class AuthActivity : AppCompatActivity() {
         }
         // If no matching backup, proceed to main
         goToMain(username)
+    }
+    
+    private fun updateAuthLogo() {
+        val timelessLogo = findViewById<ImageView>(R.id.timelessLogo)
+        if (timelessLogo != null) {
+            // Use the new main logo
+            val logoDrawable = androidx.core.content.ContextCompat.getDrawable(this, R.drawable.tymeless_main_logo)
+            timelessLogo.setImageDrawable(logoDrawable)
+        }
     }
 } 

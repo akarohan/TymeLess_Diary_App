@@ -6,10 +6,10 @@
     android:viewportHeight="24">
     <!-- Door/vertical bar -->
     <path
-        android:fillColor="#FF000000"
+        android:fillColor="?android:textColorPrimary"
         android:pathData="M5,5v14h4v-2H7V7h2V5H5z"/>
     <!-- Arrow -->
     <path
-        android:fillColor="#FF000000"
+        android:fillColor="?android:textColorPrimary"
         android:pathData="M21,12l-4-4v3h-5v2h5v3L21,12z"/>
 </vector> 

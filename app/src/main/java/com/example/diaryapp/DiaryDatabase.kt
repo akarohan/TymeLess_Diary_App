@@ -5,10 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import com.example.diaryapp.data.Note
 import com.example.diaryapp.data.NoteDao
 
-@Database(entities = [DiaryEntry::class, Note::class], version = 9, exportSchema = false)
+@Database(entities = [DiaryEntry::class, Note::class], version = 11, exportSchema = false)
 @TypeConverters(DiaryTypeConverters::class)
 abstract class DiaryDatabase : RoomDatabase() {
     abstract fun diaryEntryDao(): DiaryEntryDao
@@ -25,10 +26,17 @@ abstract class DiaryDatabase : RoomDatabase() {
                     DiaryDatabase::class.java,
                     "diary_database"
                 )
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_10_11)
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Add thumbnailPath column to notes table
+                database.execSQL("ALTER TABLE notes ADD COLUMN thumbnailPath TEXT")
             }
         }
     }

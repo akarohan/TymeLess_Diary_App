@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#121212</color>
+    <color name="text">#FFFFFF</color>
+    <color name="greyback">#000000</color>
+    <color name="button_bg">#FFFFFF</color>
+    <color name="button_text">#222222</color>
+    <color name="underline">#FFFFFF</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
+    <color name="background_black">#000000</color>
+    <color name="text_white">#FFFFFF</color>
+    <color name="edit_box_background">#222222</color>
+    <color name="edit_text_color">#FFFFFF</color>
+    <color name="edit_hint_color">#AAAAAA</color>
+    <color name="hint">#AAAAAA</color>
+    <!-- Add more as needed for your app -->
+</resources> 

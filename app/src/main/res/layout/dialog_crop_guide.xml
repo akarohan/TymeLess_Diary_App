@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Position your image to avoid covering these UI elements:"
+        android:textSize="16sp"
+        android:textColor="@color/text"
+        android:layout_marginBottom="16dp" />
+
+    <!-- App UI Preview Container -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_image_rounded"
+        android:layout_marginBottom="16dp">
+
+        <!-- Background placeholder -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/greyback" />
+
+        <!-- Timeless Logo (top left) -->
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_timeless_logo"
+            android:alpha="0.3"
+            android:layout_margin="20dp"
+            android:contentDescription="Timeless logo position" />
+
+        <!-- Night Mode Icon (top right) -->
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_moon"
+            android:alpha="0.3"
+            android:layout_gravity="top|end"
+            android:layout_margin="20dp"
+            android:contentDescription="Night mode icon position" />
+
+        <!-- Good Morning Text (center top) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Good morning"
+            android:textSize="24sp"
+            android:textColor="@color/white"
+            android:alpha="0.3"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="80dp" />
+
+        <!-- Profile Picture (top right, below night mode) -->
+        <ImageView
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/ic_user_placeholder"
+            android:alpha="0.3"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="70dp"
+            android:layout_marginEnd="20dp"
+            android:contentDescription="Profile picture position" />
+
+    </FrameLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="💡 Keep important parts of your image in the center area, avoiding the top corners where UI elements are located."
+        android:textSize="14sp"
+        android:textColor="@color/text"
+        android:alpha="0.8" />
+
+</LinearLayout> 

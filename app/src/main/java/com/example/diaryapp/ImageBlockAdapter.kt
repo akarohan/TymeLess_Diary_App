@@ -25,6 +25,7 @@ class ImageBlockAdapter(
         val uri = imageUris[position]
         holder.bind(uri)
         holder.imageDelete.setOnClickListener {
+            android.util.Log.d("ImageBlockAdapter", "Delete button clicked for position: $position")
             onRemove(position)
         }
     }
@@ -37,10 +38,18 @@ class ImageBlockAdapter(
         fun bind(uri: Uri) {
             val finalUri = if (uri.scheme == null || uri.scheme == "file") {
                 // If the Uri is a file path or has no scheme, use fromFile
-                Uri.fromFile(java.io.File(uri.path ?: ""))
+                val file = java.io.File(uri.path ?: "")
+                if (file.exists()) {
+                    android.util.Log.d("ImageBlockAdapter", "Loading image from file: ${file.absolutePath}")
+                    Uri.fromFile(file)
+                } else {
+                    android.util.Log.e("ImageBlockAdapter", "File does not exist: ${file.absolutePath}")
+                    uri // Return original URI even if file doesn't exist
+                }
             } else {
                 uri
             }
+            
             Glide.with(imageView.context)
                 .load(finalUri)
                 .placeholder(R.drawable.bg_image_rounded)

@@ -6,8 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="@color/greyback"
-    tools:openDrawer="start">
+    android:background="?android:windowBackground"
+    tools:openDrawer="end">
 
     <include
         android:id="@+id/app_bar_main"
@@ -15,14 +15,10 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <FrameLayout
-        android:id="@+id/drawer_container"
-        android:layout_width="wrap_content"
+    <include
+        layout="@layout/custom_nav_view"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
-        android:layout_gravity="end">
-        <include layout="@layout/custom_nav_view" />
-    </FrameLayout>
-
-    <!-- The fragment container is included via app_bar_main or nav_host_fragment -->
+        android:layout_gravity="end" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

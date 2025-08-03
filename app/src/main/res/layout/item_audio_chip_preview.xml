@@ -3,7 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="80dp"
     android:background="@drawable/bg_audio_chip_pill"
-    android:layout_margin="8dp">
+    android:layout_margin="8dp"
+    android:elevation="8dp"
+    android:translationZ="4dp">
 
     <LinearLayout
         android:layout_width="match_parent"

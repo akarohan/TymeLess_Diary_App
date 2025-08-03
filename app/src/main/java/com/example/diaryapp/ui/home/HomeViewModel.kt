@@ -18,7 +18,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadEntries() {
         viewModelScope.launch {
-            _entries.postValue(db.diaryEntryDao().getAllEntries())
+            _entries.postValue(db.diaryEntryDao().getAllNonDeletedEntries())
         }
     }
 }

@@ -47,6 +47,78 @@ class NotesAdapter(
         notifyDataSetChanged()
     }
 
+    private fun parseContentForDisplay(content: String): String {
+        try {
+            // Clean up any old format data first
+            val cleanedContent = cleanOldFormatData(content)
+            
+            // Check if content contains checklist items
+            if (cleanedContent.contains("CHECKLIST:")) {
+                // Extract regular text content (before checklist)
+                val textContent = cleanedContent.replace(Regex("CHECKLIST:.+"), "").trim()
+                
+                // Extract checklist items
+                val checklistMatch = Regex("CHECKLIST:(.+)").find(cleanedContent)
+                if (checklistMatch != null) {
+                    val checklistData = checklistMatch.groupValues[1]
+                    if (checklistData.isNotEmpty()) {
+                        val items = checklistData.split("|")
+                        val bulletPoints = items.mapNotNull { item ->
+                            try {
+                                if (item.isNotEmpty()) {
+                                    val parts = item.split(":", limit = 2)
+                                    if (parts.size == 2) {
+                                        val text = parts[0].replace("\\:", ":").replace("\\|", "|")
+                                        val isChecked = parts[1] == "1"
+                                        val checkboxSymbol = if (isChecked) "☑" else "☐"
+                                        "$checkboxSymbol ${text.trim()}"
+                                    } else null
+                                } else null
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        
+                        // Combine text content with bullet points
+                        return if (textContent.isNotEmpty()) {
+                            "$textContent\n\n${bulletPoints.joinToString("\n")}"
+                        } else {
+                            bulletPoints.joinToString("\n")
+                        }
+                    }
+                }
+            }
+            
+            // If no checklist found, return original content
+            return cleanedContent
+        } catch (e: Exception) {
+            android.util.Log.e("NotesAdapter", "Error parsing content for display", e)
+            return content
+        }
+    }
+    
+    private fun cleanOldFormatData(content: String): String {
+        // Remove any old HTML format with checkbox symbols
+        var cleanedContent = content
+        
+        // Remove old HTML format: <span style='margin-right: 8px;'>☐</span><span style='...'>text</span>
+        val oldHtmlPattern = Regex("<span style='margin-right: 8px;'>([☐☑])</span><span style='[^']*'>([^<]*)</span>")
+        cleanedContent = oldHtmlPattern.replace(cleanedContent) { matchResult ->
+            val checkboxSymbol = matchResult.groupValues[1]
+            val text = matchResult.groupValues[2]
+            val isChecked = if (checkboxSymbol == "☑") "1" else "0"
+            "CHECKLIST:$text:$isChecked"
+        }
+        
+        // Remove any standalone checkbox symbols
+        cleanedContent = cleanedContent.replace("☐", "").replace("☑", "")
+        
+        // Clean up any remaining HTML tags
+        cleanedContent = cleanedContent.replace(Regex("<[^>]*>"), "")
+        
+        return cleanedContent
+    }
+
     inner class NoteViewHolder(itemView: View, private val viewType: Int) : RecyclerView.ViewHolder(itemView) {
         private val title: TextView = when (viewType) {
             1 -> itemView.findViewById(R.id.pnoteTitle)
@@ -58,13 +130,14 @@ class NotesAdapter(
             2 -> itemView.findViewById(R.id.anoteContent)
             else -> itemView.findViewById(R.id.noteContent)
         }
-        private val btnDelete: ImageButton = when (viewType) {
+        private val btnDelete: ImageView? = when (viewType) {
             1 -> itemView.findViewById(R.id.btnDeletePNote)
             2 -> itemView.findViewById(R.id.btnDeleteANote)
             else -> itemView.findViewById(R.id.btnDeleteNote)
         }
-        // For A note: single image
+        // For A note: single image and container
         private val anoteImage: ImageView? = if (viewType == 2) itemView.findViewById(R.id.anoteImage) else null
+        private val anoteImageContainer: View? = if (viewType == 2) itemView.findViewById(R.id.anoteImageContainer) else null
 
         fun bind(note: Note) {
             title.text = note.title
@@ -73,20 +146,47 @@ class NotesAdapter(
                 content.text = "••••••••••••••••••••"
                 content.setTextColor(android.graphics.Color.GRAY)
             } else {
-                content.text = note.content
+                // Parse content and convert checklist items to bullet points
+                val displayContent = parseContentForDisplay(note.content)
+                content.text = displayContent
                 content.setTextColor(android.graphics.Color.parseColor("#222222"))
             }
-            // Show only one image for A notes
-            if (note.noteType == "A" && anoteImage != null) {
-                if (note.imagePaths.isNotEmpty()) {
-                    anoteImage.visibility = View.VISIBLE
-                    val path = note.imagePaths[0]
-                    val file = java.io.File(path)
+            // Show thumbnail or image for A notes
+            if (note.noteType == "A" && anoteImage != null && anoteImageContainer != null) {
+                android.util.Log.d("NotesAdapter", "=== PROCESSING A-NOTE ===")
+                android.util.Log.d("NotesAdapter", "Note ID: ${note.id}")
+                android.util.Log.d("NotesAdapter", "Note title: ${note.title}")
+                android.util.Log.d("NotesAdapter", "Image paths: ${note.imagePaths}")
+                android.util.Log.d("NotesAdapter", "Thumbnail path: ${note.thumbnailPath}")
+                android.util.Log.d("NotesAdapter", "Thumbnail path is null: ${note.thumbnailPath == null}")
+                
+                // Priority: thumbnail first, then first image from imagePaths
+                val pathToShow = note.thumbnailPath ?: note.imagePaths.firstOrNull()
+                android.util.Log.d("NotesAdapter", "Final path to show: $pathToShow")
+                android.util.Log.d("NotesAdapter", "Path source: ${if (note.thumbnailPath != null) "THUMBNAIL" else "REGULAR_IMAGE"}")
+                
+                if (pathToShow != null) {
+                    anoteImageContainer.visibility = View.VISIBLE
+                    android.util.Log.d("NotesAdapter", "Loading image from path: $pathToShow")
+                    
+                    // Handle both relative and absolute paths
+                    val file = if (pathToShow.startsWith("/")) {
+                        // Absolute path
+                        java.io.File(pathToShow)
+                    } else {
+                        // Relative path (filename only) - construct full path
+                        java.io.File(anoteImage.context.filesDir, pathToShow)
+                    }
+                    
+                    android.util.Log.d("NotesAdapter", "Full file path: ${file.absolutePath}")
+                    android.util.Log.d("NotesAdapter", "File exists: ${file.exists()}")
+                    
                     val uri = when {
                         file.exists() -> android.net.Uri.fromFile(file)
-                        path.startsWith("content://") -> android.net.Uri.parse(path)
+                        pathToShow.startsWith("content://") -> android.net.Uri.parse(pathToShow)
                         else -> null
                     }
+                    android.util.Log.d("NotesAdapter", "Final URI: $uri")
                     if (uri != null) {
                         com.bumptech.glide.Glide.with(anoteImage.context)
                             .load(uri)
@@ -94,15 +194,18 @@ class NotesAdapter(
                             .error(com.example.diaryapp.R.drawable.bg_image_rounded)
                             .centerCrop()
                             .into(anoteImage)
+                        android.util.Log.d("NotesAdapter", "Image loaded successfully")
                     } else {
                         anoteImage.setImageResource(com.example.diaryapp.R.drawable.bg_image_rounded)
+                        android.util.Log.d("NotesAdapter", "Using placeholder image")
                     }
                 } else {
-                    anoteImage.visibility = View.GONE
+                    anoteImageContainer.visibility = View.GONE
+                    android.util.Log.d("NotesAdapter", "No thumbnail or image paths, hiding container")
                 }
             }
             itemView.setOnClickListener { onNoteClick(note) }
-            btnDelete.setOnClickListener { onNoteDelete(note) }
+            btnDelete?.setOnClickListener { onNoteDelete(note) }
         }
     }
 } 

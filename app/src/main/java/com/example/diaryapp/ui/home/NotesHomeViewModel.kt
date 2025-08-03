@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 class NotesHomeViewModel(application: Application) : AndroidViewModel(application) {
     private val noteDao = DiaryDatabase.getDatabase(application).noteDao()
-    val notes: LiveData<List<Note>> = noteDao.getAllNotes()
+    val notes: LiveData<List<Note>> = noteDao.getAllNonDeletedNotes()
 
     fun insert(note: Note) {
         viewModelScope.launch {

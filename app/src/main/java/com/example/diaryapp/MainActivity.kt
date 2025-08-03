@@ -28,6 +28,7 @@ import android.widget.Toast
 import android.util.Log
 import android.widget.LinearLayout
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -36,6 +37,7 @@ import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import android.provider.MediaStore
 import android.app.AlertDialog
 import androidx.core.app.ActivityCompat
@@ -45,9 +47,32 @@ import com.yalantis.ucrop.UCrop
 import androidx.core.view.GravityCompat
 import jp.wasabeef.blurry.Blurry
 import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
+import com.bumptech.glide.request.transition.Transition as GlideTransition
+import androidx.transition.Transition
+import androidx.transition.TransitionListenerAdapter
+import androidx.transition.ChangeBounds
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.widget.ImageButton
+import androidx.appcompat.app.AppCompatDelegate
+import android.widget.Switch
+import android.animation.ObjectAnimator
+import android.widget.FrameLayout
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
+import android.view.Gravity
+import androidx.transition.TransitionManager
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
+import androidx.core.content.ContextCompat.getColor
+import androidx.annotation.ColorInt
+import android.graphics.drawable.GradientDrawable
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.content.Context
+
+// Extension property for dp to px
+// Removed: val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 
 class MainActivity : AppCompatActivity() {
 
@@ -68,9 +93,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cropThemeHeaderPicLauncher: androidx.activity.result.ActivityResultLauncher<Intent>
     private lateinit var prefs: SharedPreferences
     private lateinit var toolbarBackgroundImage: ImageView
+    private lateinit var navView: NavigationView
+    private lateinit var themeUpdateReceiver: BroadcastReceiver
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply theme before super.onCreate
+        ThemeManager.applyTheme(this)
         super.onCreate(savedInstanceState)
+        
+        // Add smooth transition animation
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -78,315 +111,265 @@ class MainActivity : AppCompatActivity() {
 
         prefs = getEncryptedPrefs()
 
+        // Set up theme update receiver
+        setupThemeUpdateReceiver()
+
         // Set theme pic or color on the app bar (header)
+        val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
         val themeHeaderPicUri = prefs.getString("theme_header_pic_uri", null)
-        if (themeHeaderPicUri != null && File(themeHeaderPicUri).exists()) {
-            Glide.with(this)
-                .load(Uri.fromFile(File(themeHeaderPicUri)))
-                .centerCrop()
-                .into(toolbarBackgroundImage)
-            toolbarBackgroundImage.visibility = View.VISIBLE
-            binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        val isNight = ThemeManager.isNightMode(this)
+        
+        if (selectedThemeIndex >= 0 && themeHeaderPicUri != null && File(themeHeaderPicUri).exists()) {
+            // Check if this is a custom theme (custom themes don't have day/night variants)
+            // Custom theme index is typically the last one in the list
+            val totalThemes = 2 + 8 + 1 // dayNightThemes + standaloneThemes + customThemes
+            val customThemeIndex = totalThemes - 1 // Custom theme is the last one
+            val isCustomTheme = selectedThemeIndex == customThemeIndex
+            
+            if (isCustomTheme) {
+                // For custom themes, use the main theme file directly
+                Glide.with(this)
+                    .load(Uri.fromFile(File(themeHeaderPicUri)))
+                    .centerCrop()
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .skipMemoryCache(true)
+                    .into(toolbarBackgroundImage)
+                toolbarBackgroundImage.visibility = View.VISIBLE
+                binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                Log.d("THEME_MAIN", "Loaded custom theme image")
+            } else {
+                // For predefined themes, check if we have day/night theme files saved
+                val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+                val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+                
+                val sourceFile = if (isNight) nightFile else dayFile
+                if (sourceFile.exists()) {
+                    Glide.with(this)
+                        .load(Uri.fromFile(sourceFile))
+                        .centerCrop()
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .skipMemoryCache(true)
+                        .into(toolbarBackgroundImage)
+                    toolbarBackgroundImage.visibility = View.VISIBLE
+                    binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    Log.d("THEME_MAIN", "Loaded ${if (isNight) "night" else "day"} theme image")
+                } else {
+                    // Fallback to the saved theme file
+                    Glide.with(this)
+                        .load(Uri.fromFile(File(themeHeaderPicUri)))
+                        .centerCrop()
+                        .into(toolbarBackgroundImage)
+                    toolbarBackgroundImage.visibility = View.VISIBLE
+                    binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    Log.d("THEME_MAIN", "Loaded fallback theme image")
+                }
+            }
         } else {
             toolbarBackgroundImage.visibility = View.GONE
-            val themeColor = ThemeUtils.getCurrentThemeColor(this)
-            binding.appBarMain.toolbar.setBackgroundColor(themeColor)
+            val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+            binding.appBarMain.toolbar.setBackgroundColor(backgroundColor)
+            Log.d("THEME_MAIN", "No theme selected, using ${if (isNight) "black" else "white"} background")
         }
 
-        // setSupportActionBar(binding.appBarMain.toolbar) // keep this to use the toolbar
-        val drawerLayout: DrawerLayout = binding.drawerLayout
-        val navView: NavigationView = findViewById(R.id.nav_view)
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        // appBarConfiguration = AppBarConfiguration(
-        //     setOf(
-        //         R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
-        //     ), drawerLayout
-        // )
-        // setupActionBarWithNavController(navController, appBarConfiguration)
+        // Fresh Navigation Drawer Setup
+        setupFreshNavigationDrawer()
 
         db = DiaryDatabase.getDatabase(this)
 
-        // Now safe to call updateDrawerHeader
-        updateDrawerHeader()
         updateDateText()
-
-        // Set version and built by in the footer (already included in layout)
-        val versionTextView = findViewById<TextView>(R.id.navAppVersion)
-        val builtByTextView = findViewById<TextView>(R.id.navBuiltBy)
-        val versionName = packageManager.getPackageInfo(packageName, 0).versionName
-        versionTextView?.text = "Version $versionName"
-        builtByTextView?.text = "Built by Rohan"
-
-        navView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.nav_home -> {
-                    drawerLayout.closeDrawers()
-                    findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.nav_home)
-                    // Clear checked state for all items
-                    val menu = navView.menu
-                    for (i in 0 until menu.size()) {
-                        menu.getItem(i).isChecked = false
-                    }
-                    true
-                }
-                R.id.nav_settings -> {
-                    drawerLayout.closeDrawers()
-                    startActivity(Intent(this, SettingsActivity::class.java))
-                    // Clear checked state for all items
-                    val menu = navView.menu
-                    for (i in 0 until menu.size()) {
-                        menu.getItem(i).isChecked = false
-                    }
-                    true
-                }
-                R.id.nav_customize_login -> {
-                    drawerLayout.closeDrawers()
-                    startActivity(Intent(this, LoginPageCustomizeActivity::class.java))
-                    // Clear checked state for all items
-                    val menu = navView.menu
-                    for (i in 0 until menu.size()) {
-                        menu.getItem(i).isChecked = false
-                    }
-                    true
-                }
-                R.id.nav_logout -> {
-                    drawerLayout.closeDrawers()
-                    // Clear only session-related preferences, preserve login credentials and images
-                    prefs.edit()
-                        // .remove("profile_pic_uri")
-                        // .remove("cover_pic_uri")
-                        .apply()
-                    // Redirect to AuthActivity
-                    val intent = Intent(this, AuthActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                    finish()
-                    true
-                }
-                R.id.nav_change_theme -> {
-                    drawerLayout.closeDrawers()
-                    val prefsColor = getSharedPreferences("theme_prefs", MODE_PRIVATE)
-                    val defaultColor = ContextCompat.getColor(this, R.color.greyback)
-                    val currentColor = prefsColor.getInt("theme_color", defaultColor)
-                    
-                    // Comprehensive list of colors with names
-                    val colorOptions = intArrayOf(
-                        0xFFF44336.toInt(), // Red
-                        0xFFE91E63.toInt(), // Pink
-                        0xFF9C27B0.toInt(), // Purple
-                        0xFF673AB7.toInt(), // Deep Purple
-                        0xFF3F51B5.toInt(), // Indigo
-                        0xFF2196F3.toInt(), // Blue
-                        0xFF03A9F4.toInt(), // Light Blue
-                        0xFF00BCD4.toInt(), // Cyan
-                        0xFF009688.toInt(), // Teal
-                        0xFF4CAF50.toInt(), // Green
-                        0xFF8BC34A.toInt(), // Light Green
-                        0xFFCDDC39.toInt(), // Lime
-                        0xFFFFEB3B.toInt(), // Yellow
-                        0xFFFFC107.toInt(), // Amber
-                        0xFFFF9800.toInt(), // Orange
-                        0xFFFF5722.toInt(), // Deep Orange
-                        0xFF795548.toInt(), // Brown
-                        0xFF9E9E9E.toInt(), // Grey
-                        0xFF607D8B.toInt(), // Blue Grey
-                        0xFF000000.toInt(), // Black
-                        0xFFFFFFFF.toInt(), // White
-                        0xFFE0E0E0.toInt(), // Light Grey
-                        0xFFF5F5F5.toInt(), // Very Light Grey
-                        0xFFFAFAFA.toInt(), // Off White
-                        0xFF424242.toInt(), // Dark Grey
-                        0xFF212121.toInt(), // Very Dark Grey
-                        0xFF1A237E.toInt(), // Dark Blue
-                        0xFF0D47A1.toInt(), // Deep Blue
-                        0xFF004D40.toInt(), // Dark Teal
-                        0xFF1B5E20.toInt(), // Dark Green
-                        0xFFBF360C.toInt(), // Dark Orange
-                        0xFF4A148C.toInt(), // Dark Purple
-                        0xFF880E4F.toInt()  // Dark Pink
-                    )
-                    
-                    val colorNames = arrayOf(
-                        "Red", "Pink", "Purple", "Deep Purple", "Indigo", "Blue", "Light Blue", 
-                        "Cyan", "Teal", "Green", "Light Green", "Lime", "Yellow", "Amber", 
-                        "Orange", "Deep Orange", "Brown", "Grey", "Blue Grey", "Black", 
-                        "White", "Light Grey", "Very Light Grey", "Off White", "Dark Grey", 
-                        "Very Dark Grey", "Dark Blue", "Deep Blue", "Dark Teal", "Dark Green", 
-                        "Dark Orange", "Dark Purple", "Dark Pink"
-                    )
-                    
-                    AlertDialog.Builder(this)
-                        .setTitle("Pick a theme color")
-                        .setItems(colorNames) { _, which ->
-                            val color = colorOptions[which]
-                            Log.d("THEME_COLOR", "Selected color: ${String.format("#%06X", 0xFFFFFF and color)}")
-                            prefsColor.edit().putInt("theme_color", color).apply()
-                            
-                            // Remove theme header image if it exists
-                            val themeHeaderPicFile = File(filesDir, "theme_header_pic.jpg")
-                            if (themeHeaderPicFile.exists()) {
-                                themeHeaderPicFile.delete()
-                                Log.d("THEME_COLOR", "Deleted theme header image file")
-                            }
-                            prefs.edit().remove("theme_header_pic_uri").apply()
-                            
-                            // Hide the background image and show the color
-                            if (::toolbarBackgroundImage.isInitialized) {
-                                toolbarBackgroundImage.visibility = View.GONE
-                                Log.d("THEME_COLOR", "Hidden toolbar background image")
-                            }
-                            binding.appBarMain.toolbar.setBackgroundColor(color)
-                            Log.d("THEME_COLOR", "Applied color to toolbar")
-                            
-                            // Force refresh the toolbar
-                            binding.appBarMain.toolbar.invalidate()
-                            binding.appBarMain.toolbar.requestLayout()
-                            
-                            Toast.makeText(this, "Theme color applied!", Toast.LENGTH_SHORT).show()
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                    true
-                }
-                R.id.nav_change_theme_pic -> {
-                    drawerLayout.closeDrawers()
-                    pickThemeHeaderPicLauncher.launch("image/*")
-                    true
-                }
-                R.id.nav_backup_restore -> {
-                    drawerLayout.closeDrawers()
-                    startActivity(Intent(this, BackupRestoreActivity::class.java))
-                    true
-                }
-
-                else -> false
-            }
-        }
-
-        val headerView = navView.getHeaderView(0)
-        val profileImageView = headerView.findViewById<ImageView>(R.id.imageView)
-        val profileCameraButton = headerView.findViewById<ImageButton>(R.id.profileCameraButton)
-        val coverCameraButton = headerView.findViewById<ImageButton>(R.id.coverCameraButton)
-        val nameTextView = headerView.findViewById<TextView>(R.id.navUserName)
-        val usernameTextView = headerView.findViewById<TextView>(R.id.navUserUsername)
-        val profilePicUri = prefs.getString("profile_pic_uri", null)
-        val coverPicUri = prefs.getString("cover_pic_uri", null)
-        Log.d("PROFILE_IMAGE", "updateDrawerHeader profilePicUri: $profilePicUri")
-        var fileExists = false
-        var file: File? = null
-        if (profilePicUri != null) {
-            file = if (profilePicUri.startsWith("/")) File(profilePicUri) else null
-            fileExists = file?.exists() == true
-            Log.d("PROFILE_IMAGE", "File exists: $fileExists")
-        }
-        if (profilePicUri != null && profileImageView != null && fileExists) {
-            val uri = android.net.Uri.fromFile(file)
-            // Set the profile image in the nav drawer header
-            Glide.with(this)
-                .load(uri)
-                .diskCacheStrategy(DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                .into(profileImageView)
-        } else if (profileImageView != null) {
-            profileImageView.setImageResource(R.drawable.ic_user_placeholder)
-        }
-        // Set the blurred background (cover photo)
-        val blurredBackground = headerView.findViewById<ImageView>(R.id.blurredBackground)
-        if (coverPicUri != null && blurredBackground != null) {
-            val uri = if (coverPicUri.startsWith("/")) {
-                android.net.Uri.fromFile(java.io.File(coverPicUri))
-            } else {
-                android.net.Uri.parse(coverPicUri)
-            }
-            Glide.with(this)
-                .asBitmap()
-                .load(uri)
-                .diskCacheStrategy(DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                .into(object : com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
-                    override fun onResourceReady(resource: android.graphics.Bitmap, transition: com.bumptech.glide.request.transition.Transition<in android.graphics.Bitmap>?) {
-                        val scaled = if (resource.width > 800 || resource.height > 800) {
-                            android.graphics.Bitmap.createScaledBitmap(resource, 800, 800 * resource.height / resource.width, true)
-                        } else resource
-                        jp.wasabeef.blurry.Blurry.with(this@MainActivity)
-                            .radius(20)
-                            .from(scaled)
-                            .into(blurredBackground)
-                    }
-                    override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
-                })
-        } else if (profilePicUri != null && blurredBackground != null) {
-            // fallback: use profile pic as cover if no cover set
-            val uri = if (profilePicUri.startsWith("/")) {
-                android.net.Uri.fromFile(java.io.File(profilePicUri))
-            } else {
-                android.net.Uri.parse(profilePicUri)
-            }
-            Glide.with(this)
-                .asBitmap()
-                .load(uri)
-                .diskCacheStrategy(DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                .into(object : com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
-                    override fun onResourceReady(resource: android.graphics.Bitmap, transition: com.bumptech.glide.request.transition.Transition<in android.graphics.Bitmap>?) {
-                        val scaled = if (resource.width > 800 || resource.height > 800) {
-                            android.graphics.Bitmap.createScaledBitmap(resource, 800, 800 * resource.height / resource.width, true)
-                        } else resource
-                        jp.wasabeef.blurry.Blurry.with(this@MainActivity)
-                            .radius(20)
-                            .from(scaled)
-                            .into(blurredBackground)
-                    }
-                    override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
-                })
-        }
-
-        profileCameraButton?.setOnClickListener {
-            val options = arrayOf("Choose a Picture", "Take a Picture", "Remove Picture")
-            AlertDialog.Builder(this)
-                .setTitle("Profile Picture")
-                .setItems(options) { dialog, which ->
-                    when (which) {
-                        0 -> pickProfileImageLauncher.launch("image/*")
-                        1 -> {
-                            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST_CODE)
-                                return@setItems
-                            }
-                            launchCameraForProfileImage()
-                        }
-                        2 -> removeProfileImage()
-                    }
-                }
-                .show()
-        }
-
-        coverCameraButton?.setOnClickListener {
-            val options = arrayOf("Choose a Picture", "Take a Picture", "Remove Picture")
-            AlertDialog.Builder(this)
-                .setTitle("Cover Photo")
-                .setItems(options) { dialog, which ->
-                    when (which) {
-                        0 -> pickCoverImageLauncher.launch("image/*")
-                        1 -> {
-                            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CAMERA), COVER_CAMERA_PERMISSION_REQUEST_CODE)
-                                return@setItems
-                            }
-                            launchCameraForCoverImage()
-                        }
-                        2 -> removeCoverImage()
-                    }
-                }
-                .show()
-        }
+        updateFreshNavigationDrawerHeader()
 
         // Set greeting message below the logo based on time and user name
         val greetingTextView = binding.appBarMain.toolbar.findViewById<TextView>(R.id.greeting)
         val userName = prefs.getString("name", "User") ?: "User"
         greetingTextView?.text = getGreetingMessage(userName)
 
+        // Set up toolbar profile image to open navigation drawer when tapped
+        val toolbarProfileImageView = binding.appBarMain.toolbar.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.profileImageView)
+        toolbarProfileImageView?.setOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.END)
+            // Update colors when drawer opens
+            val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+            val isNightMode = themePrefs.getBoolean("is_night_mode", false)
+            Log.d("NAV_DRAWER", "Profile tapped, updating colors for night mode: $isNightMode")
+            updateNavDrawerColors(isNightMode)
+        }
+
+        // Set version number in footer
+        val versionName = packageManager.getPackageInfo(packageName, 0).versionName
+        val versionTextView = findViewById<TextView>(R.id.navAppVersion)
+        versionTextView?.text = "Version $versionName"
+
+        setupImageLaunchers()
+
+        // Night mode switch logic
+        setupNightModeSwitch()
+        
+        // Initialize navigation drawer colors based on current theme
+        val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val isNightMode = themePrefs.getBoolean("is_night_mode", false)
+        
+        // Use post to ensure views are ready
+        binding.root.post {
+            updateNavDrawerColors(isNightMode)
+            updateNavDrawerHeaderBackground(isNightMode)
+        }
+    }
+
+    private fun setupFreshNavigationDrawer() {
+        val drawerLayout: DrawerLayout = binding.drawerLayout
+        
+        // Get the custom nav view and make it intercept all touches
+        val customNavView = findViewById<LinearLayout>(R.id.custom_nav_view)
+        customNavView?.setOnTouchListener { _, _ ->
+            // Consume all touch events - this prevents any background interaction
+            true
+        }
+        
+        // Set up drawer state change listener to update colors when drawer opens
+        drawerLayout.addDrawerListener(object : androidx.drawerlayout.widget.DrawerLayout.DrawerListener {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
+            override fun onDrawerOpened(drawerView: View) {
+                // Update colors when drawer opens
+                val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+                val isNightMode = themePrefs.getBoolean("is_night_mode", false)
+                updateNavDrawerColors(isNightMode)
+            }
+            override fun onDrawerClosed(drawerView: View) {}
+            override fun onDrawerStateChanged(newState: Int) {}
+        })
+        
+        // Set up custom click listeners for each menu item
+        findViewById<LinearLayout>(R.id.nav_home)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.nav_home)
+        }
+        
+        findViewById<LinearLayout>(R.id.nav_settings)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        
+        findViewById<LinearLayout>(R.id.nav_customize_login)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, LoginPageCustomizeActivity::class.java))
+        }
+        
+
+        
+        findViewById<LinearLayout>(R.id.nav_change_theme_pic)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, ThemePictureSelectionActivity::class.java))
+        }
+        
+        findViewById<LinearLayout>(R.id.nav_backup_restore)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, BackupRestoreActivity::class.java))
+        }
+        
+        findViewById<LinearLayout>(R.id.nav_recycle_bin)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, com.example.diaryapp.ui.home.RecycleBinActivity::class.java))
+        }
+        
+        findViewById<LinearLayout>(R.id.nav_logout)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            // Clear only session-related preferences, preserve login credentials and images
+            prefs.edit().apply()
+            // Redirect to AuthActivity
+            val intent = Intent(this, AuthActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
+        
+        // Make version text non-interactive to prevent background interaction
+        findViewById<TextView>(R.id.navAppVersion)?.setOnClickListener {
+            // Do nothing - prevents interaction with background
+        }
+        
+        findViewById<TextView>(R.id.navBuiltBy)?.setOnClickListener {
+            // Do nothing - prevents interaction with background
+        }
+    }
+
+    private fun updateFreshNavigationDrawerHeader() {
+        // Find views directly in the custom layout
+        val themeBackgroundImage = findViewById<ImageView>(R.id.themeBackgroundImage)
+        val profileImageView = findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.navProfileImageView)
+        val firstNameTextView = findViewById<TextView>(R.id.navUserFirstName)
+        val lastNameTextView = findViewById<TextView>(R.id.navUserLastName)
+        val usernameTextView = findViewById<TextView>(R.id.navUserUsername)
+        
+        // Update username and name in the navigation drawer header
+        val fullName = prefs.getString("name", "Rohan Mahapatra") ?: "Rohan Mahapatra"
+        val userUsername = prefs.getString("username", "rohan") ?: "rohan"
+        
+        // Split the name into first and last name
+        val nameParts = fullName.split(" ", limit = 2)
+        val firstName = nameParts[0]
+        val lastName = if (nameParts.size > 1) nameParts[1] else ""
+        
+        firstNameTextView?.text = firstName
+        lastNameTextView?.text = lastName
+        usernameTextView?.text = "@$userUsername"
+        
+        // Hide last name TextView if it's empty to reduce spacing
+        if (lastName.isEmpty()) {
+            lastNameTextView?.visibility = View.GONE
+        } else {
+            lastNameTextView?.visibility = View.VISIBLE
+        }
+        
+        // Update profile image
+        val profilePicUri = prefs.getString("profile_pic_uri", null)
+        Log.d("NAV_DRAWER", "Profile pic URI: $profilePicUri")
+        
+        if (profilePicUri != null && profileImageView != null) {
+            val uri = if (profilePicUri.startsWith("/")) {
+                android.net.Uri.fromFile(java.io.File(profilePicUri))
+            } else {
+                android.net.Uri.parse(profilePicUri)
+            }
+            Glide.with(this)
+                .load(uri)
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .skipMemoryCache(true)
+                .placeholder(R.drawable.ic_user_placeholder)
+                .error(R.drawable.ic_user_placeholder)
+                .into(profileImageView)
+            Log.d("NAV_DRAWER", "Loading profile image from: $uri")
+        } else if (profileImageView != null) {
+            profileImageView.setImageResource(R.drawable.ic_user_placeholder)
+            Log.d("NAV_DRAWER", "No profile pic URI, using placeholder")
+        } else {
+            Log.e("NAV_DRAWER", "Profile image view not found!")
+        }
+        
+        // Update theme background image
+        val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+        val themeHeaderPicUri = prefs.getString("theme_header_pic_uri", null)
+        
+        if (selectedThemeIndex >= 0 && themeHeaderPicUri != null && themeBackgroundImage != null && File(themeHeaderPicUri).exists()) {
+            val uri = android.net.Uri.fromFile(File(themeHeaderPicUri))
+            Glide.with(this)
+                .load(uri)
+                .centerCrop()
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .skipMemoryCache(true)
+                .into(themeBackgroundImage)
+        } else if (themeBackgroundImage != null) {
+            // No theme selected, use solid color background based on day/night mode
+            themeBackgroundImage.setImageDrawable(null)
+            val isNight = ThemeManager.isNightMode(this)
+            val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+            themeBackgroundImage.setBackgroundColor(backgroundColor)
+        }
+    }
+
+
+
+    private fun setupImageLaunchers() {
         cropImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 val data = result.data
@@ -441,101 +424,191 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
 
-        // Set up toolbar profile image to open right-side navigation drawer when tapped
-        val toolbarProfileImageView = binding.appBarMain.toolbar.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.profileImageView)
-        toolbarProfileImageView?.setOnClickListener {
-            binding.drawerLayout.openDrawer(androidx.core.view.GravityCompat.END)
+    private fun setupNightModeSwitch() {
+        // Find the new custom switch
+        val dayNightSwitch = findViewById<com.example.diaryapp.ui.DayNightSwitchView>(R.id.day_night_switch)
+        // Always read the current state from preferences
+        val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val isNightMode = themePrefs.getBoolean("is_night_mode", false)
+        dayNightSwitch.initializeState(isNightMode)
+        
+        // Initialize app logo based on current theme
+        updateAppLogo(isNightMode)
+        dayNightSwitch.setListener { isNight ->
+            // Get current state without saving yet
+            val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+            val currentIsNight = themePrefs.getBoolean("is_night_mode", false)
+            
+            // Apply theme changes if there's an actual change
+            if (currentIsNight != isNight) {
+                    android.util.Log.d("MainActivity", "Theme change detected: currentIsNight=$currentIsNight, isNight=$isNight")
+                    // Apply theme transition (switch will animate on its own)
+                    ThemeManager.applySmoothThemeTransition(this@MainActivity, currentIsNight, isNight)
+                    android.util.Log.d("MainActivity", "ThemeManager.applySmoothThemeTransition called")
+                    
+                    // Update app logo based on theme
+                    updateAppLogo(isNight)
+                
+                // Switch theme picture if needed
+                val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+                if (selectedThemeIndex >= 0) {
+                    android.util.Log.d("MainActivity", "Switching theme picture for index: $selectedThemeIndex")
+                    
+                    // Check if we have day/night theme files saved
+                    val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+                    val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+                    val outputFile = File(filesDir, "theme_header_pic.jpg")
+                    
+                    val sourceFile = if (isNight) nightFile else dayFile
+                    if (sourceFile.exists()) {
+                        try {
+                            sourceFile.copyTo(outputFile, overwrite = true)
+                            prefs.edit().putString("theme_header_pic_uri", outputFile.absolutePath).apply()
+                            
+                            Glide.with(this)
+                                .load(Uri.fromFile(outputFile))
+                                .centerCrop()
+                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                .skipMemoryCache(true)
+                                .into(toolbarBackgroundImage)
+                            
+                            toolbarBackgroundImage.visibility = View.VISIBLE
+                            binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            Log.d("THEME_PIC", "Switched theme to ${if (isNight) "night" else "day"} mode")
+                        } catch (e: Exception) {
+                            Log.e("THEME_PIC", "Failed to switch theme", e)
+                        }
+                    } else {
+                        // Fallback to the old method for predefined themes
+                        switchThemePictureForCurrentMode(isNight)
+                    }
+                }
+                
+                // Update navigation drawer colors immediately
+                updateNavDrawerColors(isNight)
+                
+                // Also update navigation drawer header background if needed
+                updateNavDrawerHeaderBackground(isNight)
+                
+                // Update main toolbar background if no theme is selected
+                if (selectedThemeIndex == -1) {
+                    toolbarBackgroundImage.visibility = View.GONE
+                    val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+                    binding.appBarMain.toolbar.setBackgroundColor(backgroundColor)
+                    Log.d("THEME_PIC", "Updated main toolbar to ${if (isNight) "black" else "white"} background")
+                }
+            }
         }
     }
 
-    private fun updateDrawerHeader() {
-        val navView: com.google.android.material.navigation.NavigationView = findViewById(R.id.nav_view)
-        val headerView = navView.getHeaderView(0)
-        val blurredBackground = headerView.findViewById<ImageView>(R.id.blurredBackground)
-        val profileImageView = headerView.findViewById<ImageView>(R.id.imageView)
-        val nameTextView = headerView.findViewById<TextView>(R.id.navUserName)
-        val usernameTextView = headerView.findViewById<TextView>(R.id.navUserUsername)
-        val prefs = getEncryptedPrefs()
-        val coverPicUri = prefs.getString("cover_pic_uri", null)
-        val profilePicUri = prefs.getString("profile_pic_uri", null)
+    private fun updateNavDrawerColors(isNight: Boolean) {
+        Log.d("NAV_DRAWER", "updateNavDrawerColors called with isNight: $isNight")
         
-        // Update username and name in the navigation drawer header
-        val userName = prefs.getString("name", "User") ?: "User"
-        val userUsername = prefs.getString("username", "user") ?: "user"
-        nameTextView?.text = userName
-        usernameTextView?.text = userUsername
+        val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+        val textColor = if (isNight) ContextCompat.getColor(this, R.color.white) else ContextCompat.getColor(this, R.color.black)
         
-        // Update profile image with cache busting
-        var fileExists = false
-        var file: File? = null
-        if (profilePicUri != null) {
-            file = if (profilePicUri.startsWith("/")) File(profilePicUri) else null
-            fileExists = file?.exists() == true
+        // Update main container background
+        val mainContainer = findViewById<LinearLayout>(R.id.custom_nav_view)
+        if (mainContainer != null) {
+            mainContainer.setBackgroundColor(backgroundColor)
+            Log.d("NAV_DRAWER", "Main container background updated to: ${if (isNight) "BLACK" else "WHITE"}")
+        } else {
+            Log.e("NAV_DRAWER", "Main container not found!")
         }
-        if (profilePicUri != null && profileImageView != null && fileExists) {
-            val uri = android.net.Uri.fromFile(file)
-            Glide.with(this)
-                .load(uri)
-                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                .into(profileImageView)
-        } else if (profileImageView != null) {
-            profileImageView.setImageResource(R.drawable.ic_user_placeholder)
+        
+        // Update menu container background
+        val menuContainer = findViewById<LinearLayout>(R.id.nav_menu_container)
+        if (menuContainer != null) {
+            menuContainer.setBackgroundColor(backgroundColor)
+            Log.d("NAV_DRAWER", "Menu container background updated")
+        } else {
+            Log.e("NAV_DRAWER", "Menu container not found!")
         }
-        // Update blurred background (cover photo) with cache busting
-        if (coverPicUri != null && blurredBackground != null && File(coverPicUri).exists()) {
-            val uri = if (coverPicUri.startsWith("/")) {
-                android.net.Uri.fromFile(java.io.File(coverPicUri))
+        
+        // Update footer background
+        val footerContainer = findViewById<LinearLayout>(R.id.nav_footer_container)
+        if (footerContainer != null) {
+            footerContainer.setBackgroundColor(backgroundColor)
+            Log.d("NAV_DRAWER", "Footer container background updated")
+        } else {
+            Log.e("NAV_DRAWER", "Footer container not found!")
+        }
+        
+        // Update all icons
+        val iconIds = listOf(
+            R.id.nav_home_icon, R.id.nav_settings_icon, R.id.nav_customize_login_icon,
+            R.id.nav_change_theme_pic_icon, R.id.nav_backup_restore_icon,
+            R.id.nav_recycle_bin_icon, R.id.nav_logout_icon
+        )
+        
+        iconIds.forEach { iconId ->
+            val iconView = findViewById<ImageView>(iconId)
+            if (iconView != null) {
+                iconView.setColorFilter(textColor)
+                Log.d("NAV_DRAWER", "Updated icon: ${resources.getResourceEntryName(iconId)}")
             } else {
-                android.net.Uri.parse(coverPicUri)
-            }
-            Glide.with(this)
-                .asBitmap()
-                .load(uri)
-                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                .into(object : com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
-                    override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-                        val scaled = if (resource.width > 800 || resource.height > 800) {
-                            Bitmap.createScaledBitmap(resource, 800, 800 * resource.height / resource.width, true)
-                        } else resource
-                        jp.wasabeef.blurry.Blurry.with(this@MainActivity)
-                            .radius(20)
-                            .from(scaled)
-                            .into(blurredBackground)
-                    }
-                    override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
-                })
-        } else if (profileImageView != null && blurredBackground != null) {
-            // fallback: use profile pic as cover if no cover set
-            val uri = if (profilePicUri != null && profilePicUri.startsWith("/")) {
-                android.net.Uri.fromFile(java.io.File(profilePicUri))
-            } else if (profilePicUri != null) {
-                android.net.Uri.parse(profilePicUri)
-            } else {
-                null
-            }
-            if (uri != null) {
-            Glide.with(this)
-                .asBitmap()
-                .load(uri)
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
-                .skipMemoryCache(true)
-                    .into(object : com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
-                        override fun onResourceReady(resource: Bitmap, transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?) {
-                        val scaled = if (resource.width > 800 || resource.height > 800) {
-                            Bitmap.createScaledBitmap(resource, 800, 800 * resource.height / resource.width, true)
-                        } else resource
-                            jp.wasabeef.blurry.Blurry.with(this@MainActivity)
-                            .radius(20)
-                            .from(scaled)
-                            .into(blurredBackground)
-                    }
-                    override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
-                })
+                Log.e("NAV_DRAWER", "Icon not found: ${resources.getResourceEntryName(iconId)}")
             }
         }
+        
+        // Update all text
+        val textIds = listOf(
+            R.id.nav_home_text, R.id.nav_settings_text, R.id.nav_customize_login_text,
+            R.id.nav_change_theme_pic_text, R.id.nav_backup_restore_text,
+            R.id.nav_recycle_bin_text, R.id.nav_logout_text, R.id.navAppVersion, R.id.navBuiltBy
+        )
+        
+        textIds.forEach { textId ->
+            val textView = findViewById<TextView>(textId)
+            if (textView != null) {
+                textView.setTextColor(textColor)
+                Log.d("NAV_DRAWER", "Updated text: ${resources.getResourceEntryName(textId)}")
+            } else {
+                Log.e("NAV_DRAWER", "Text not found: ${resources.getResourceEntryName(textId)}")
+            }
+        }
+        
+        // Update navigation drawer header text colors
+        val navUserFirstName = findViewById<TextView>(R.id.navUserFirstName)
+        val navUserLastName = findViewById<TextView>(R.id.navUserLastName)
+        val navUserUsername = findViewById<TextView>(R.id.navUserUsername)
+        
+        if (navUserFirstName != null) {
+            navUserFirstName.setTextColor(textColor)
+            Log.d("NAV_DRAWER", "Updated navUserFirstName text color")
+        } else {
+            Log.e("NAV_DRAWER", "navUserFirstName not found!")
+        }
+        
+        if (navUserLastName != null) {
+            navUserLastName.setTextColor(textColor)
+            Log.d("NAV_DRAWER", "Updated navUserLastName text color")
+        } else {
+            Log.e("NAV_DRAWER", "navUserLastName not found!")
+        }
+        
+        if (navUserUsername != null) {
+            navUserUsername.setTextColor(textColor)
+            Log.d("NAV_DRAWER", "Updated navUserUsername text color")
+        } else {
+            Log.e("NAV_DRAWER", "navUserUsername not found!")
+        }
+        
+        // Update profile picture border
+        val profileImageView = findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.navProfileImageView)
+        if (profileImageView != null) {
+            profileImageView.borderColor = textColor
+            Log.d("NAV_DRAWER", "Profile image border updated")
+        } else {
+            Log.e("NAV_DRAWER", "Profile image not found!")
+        }
+        
+        // Force redraw of the navigation drawer
+        mainContainer?.invalidate()
+        
+        Log.d("NAV_DRAWER", "updateNavDrawerColors completed")
     }
 
     private fun updateDateText() {
@@ -562,9 +635,51 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::toolbarBackgroundImage.isInitialized) {
-            val themeHeaderPicUri = prefs.getString("theme_header_pic_uri", null)
-            if (themeHeaderPicUri != null && File(themeHeaderPicUri).exists()) {
+        
+        // Check if theme needs to be applied
+        val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val isNightMode = themePrefs.getBoolean("is_night_mode", false)
+        val currentThemeMode = AppCompatDelegate.getDefaultNightMode()
+        val shouldBeNight = if (isNightMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
+        
+        // Apply theme if needed
+        if (currentThemeMode != shouldBeNight) {
+            val fromNight = currentThemeMode == AppCompatDelegate.MODE_NIGHT_YES
+            ThemeManager.applySmoothThemeTransition(this, fromNight, isNightMode)
+        }
+        
+        // Check for theme picture updates
+        val themeHeaderPicUri = prefs.getString("theme_header_pic_uri", null)
+        val themeJustApplied = prefs.getBoolean("theme_just_applied", false)
+        
+        if (themeJustApplied) {
+            // Clear the flag
+            prefs.edit().putBoolean("theme_just_applied", false).apply()
+            Log.d("THEME_RESUME", "Theme was just applied, refreshing display")
+        }
+        
+        // Load theme image or use color
+        val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+        if (selectedThemeIndex >= 0 && themeHeaderPicUri != null && File(themeHeaderPicUri).exists()) {
+            // Check if we have day/night theme files saved
+            val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+            val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+            
+            val sourceFile = if (isNightMode) nightFile else dayFile
+            if (sourceFile.exists()) {
+                Log.d("THEME_RESUME", "Loading ${if (isNightMode) "night" else "day"} theme image: ${sourceFile.absolutePath}")
+                Glide.with(this)
+                    .load(Uri.fromFile(sourceFile))
+                    .centerCrop()
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .skipMemoryCache(true)
+                    .into(toolbarBackgroundImage)
+                toolbarBackgroundImage.visibility = View.VISIBLE
+                binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                Log.d("THEME_RESUME", "Day/night theme image loaded successfully")
+            } else {
+                // Fallback to the saved theme file
+                Log.d("THEME_RESUME", "Loading fallback theme image: $themeHeaderPicUri")
                 Glide.with(this)
                     .load(Uri.fromFile(File(themeHeaderPicUri)))
                     .centerCrop()
@@ -573,15 +688,21 @@ class MainActivity : AppCompatActivity() {
                     .into(toolbarBackgroundImage)
                 toolbarBackgroundImage.visibility = View.VISIBLE
                 binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                Log.d("THEME_PIC", "onResume: Loaded theme header image: $themeHeaderPicUri")
-            } else {
-                toolbarBackgroundImage.visibility = View.GONE
-                val themeColor = ThemeUtils.getCurrentThemeColor(this)
-                binding.appBarMain.toolbar.setBackgroundColor(themeColor)
-                Log.d("THEME_PIC", "onResume: No theme image, using color: ${String.format("#%06X", 0xFFFFFF and themeColor)}")
+                Log.d("THEME_RESUME", "Fallback theme image loaded successfully")
             }
+        } else {
+            Log.d("THEME_RESUME", "No theme file found, using color")
+            toolbarBackgroundImage.visibility = View.GONE
+            val backgroundColor = if (isNightMode) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+            binding.appBarMain.toolbar.setBackgroundColor(backgroundColor)
         }
-        updateDrawerHeader()
+        
+        // Update navigation drawer header
+        updateFreshNavigationDrawerHeader()
+        
+        // Update navigation drawer colors based on current theme
+        updateNavDrawerColors(isNightMode)
+        
         // Update toolbar profile image on resume
         val toolbarProfileImageView = binding.appBarMain.toolbar.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.profileImageView)
         val profilePicUri = prefs.getString("profile_pic_uri", null)
@@ -656,7 +777,7 @@ class MainActivity : AppCompatActivity() {
             // Save file path in preferences
             prefs.edit().putString("profile_pic_uri", file.absolutePath).apply()
             Log.d("PROFILE_IMAGE", "Saved profile_pic_uri in prefs: ${file.absolutePath}")
-            updateDrawerHeader()
+            updateFreshNavigationDrawerHeader()
 
             // Update toolbar/home header profile image immediately
             val toolbarProfileImageView = binding.appBarMain.toolbar.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.profileImageView)
@@ -691,7 +812,7 @@ class MainActivity : AppCompatActivity() {
             outputStream.close()
             // Save file path in preferences
             prefs.edit().putString("cover_pic_uri", file.absolutePath).apply()
-            updateDrawerHeader()
+            updateFreshNavigationDrawerHeader()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -701,7 +822,7 @@ class MainActivity : AppCompatActivity() {
         val file = File(filesDir, "profile_image.jpg")
         if (file.exists()) file.delete()
         prefs.edit().remove("profile_pic_uri").apply()
-        updateDrawerHeader()
+        updateFreshNavigationDrawerHeader()
         // Update toolbar/home header profile image immediately
         val toolbarProfileImageView = binding.appBarMain.toolbar.findViewById<de.hdodenhof.circleimageview.CircleImageView>(R.id.profileImageView)
         toolbarProfileImageView?.setImageResource(R.drawable.ic_user_placeholder)
@@ -711,7 +832,7 @@ class MainActivity : AppCompatActivity() {
         val file = File(filesDir, "cover_image.jpg")
         if (file.exists()) file.delete()
         prefs.edit().remove("cover_pic_uri").apply()
-        updateDrawerHeader()
+        updateFreshNavigationDrawerHeader()
     }
 
     private fun saveThemeHeaderPicFromUri(uri: Uri) {
@@ -738,7 +859,9 @@ class MainActivity : AppCompatActivity() {
                 Log.d("THEME_PIC", "Applied theme header image immediately: ${file.absolutePath}")
             }
             
-            updateDrawerHeader()
+            // Update navigation drawer header
+            updateFreshNavigationDrawerHeader()
+            
             Toast.makeText(this, "Theme header image applied!", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -754,6 +877,133 @@ class MainActivity : AppCompatActivity() {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
+    private fun switchThemePictureForCurrentMode(isNight: Boolean) {
+        val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+        
+        if (selectedThemeIndex == -1) { // No theme selected
+            // Hide background image and set toolbar to proper day/night color
+            toolbarBackgroundImage.visibility = View.GONE
+            val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+            binding.appBarMain.toolbar.setBackgroundColor(backgroundColor)
+            Log.d("THEME_PIC", "No theme selected, using ${if (isNight) "black" else "white"} background")
+        } else if (selectedThemeIndex == 9) { // Custom theme
+            val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+            val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+            val outputFile = File(filesDir, "theme_header_pic.jpg")
+            
+            val sourceFile = if (isNight) nightFile else dayFile
+            if (sourceFile.exists()) {
+                try {
+                    sourceFile.copyTo(outputFile, overwrite = true)
+                    prefs.edit().putString("theme_header_pic_uri", outputFile.absolutePath).apply()
+                    
+                    Glide.with(this)
+                        .load(Uri.fromFile(outputFile))
+                        .centerCrop()
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .skipMemoryCache(true)
+                        .into(toolbarBackgroundImage)
+                    
+                    toolbarBackgroundImage.visibility = View.VISIBLE
+                    binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    Log.d("THEME_PIC", "Switched custom theme to ${if (isNight) "night" else "day"} mode")
+                } catch (e: Exception) {
+                    Log.e("THEME_PIC", "Failed to switch custom theme", e)
+                }
+            }
+        } else if (selectedThemeIndex >= 0 && selectedThemeIndex < 9) { // Predefined themes
+            val themePictures = listOf(
+                Pair(R.drawable.theme_abstract_day, R.drawable.theme_abstract_night),
+                Pair(R.drawable.theme_city_day, R.drawable.theme_city_night),
+                Pair(R.drawable.theme_forest_day, R.drawable.theme_forest_night),
+                Pair(R.drawable.theme_minimal_day, R.drawable.theme_minimal_night),
+                Pair(R.drawable.theme_mountains_day, R.drawable.theme_mountains_night),
+                Pair(R.drawable.theme_nature_day, R.drawable.theme_nature_night),
+                Pair(R.drawable.theme_ocean_day, R.drawable.theme_ocean_night),
+                Pair(R.drawable.theme_sunset_day, R.drawable.theme_sunset_night),
+                Pair(R.drawable.bg_icemountain_optimized, R.drawable.bg_icemountain_night_optimized)
+            )
+            
+            val themePair = themePictures[selectedThemeIndex]
+            val resourceId = if (isNight) themePair.second else themePair.first
+            
+            try {
+                val outputFile = File(filesDir, "theme_header_pic.jpg")
+                
+                // Use proper bitmap saving instead of raw resource copying
+                val bitmap = android.graphics.BitmapFactory.decodeResource(resources, resourceId)
+                FileOutputStream(outputFile).use { outputStream ->
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    outputStream.flush()
+                }
+                
+                prefs.edit().putString("theme_header_pic_uri", outputFile.absolutePath).apply()
+                
+                Glide.with(this)
+                    .load(Uri.fromFile(outputFile))
+                    .centerCrop()
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .skipMemoryCache(true)
+                    .into(toolbarBackgroundImage)
+                
+                toolbarBackgroundImage.visibility = View.VISIBLE
+                binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                Log.d("THEME_PIC", "Switched predefined theme to ${if (isNight) "night" else "day"} mode")
+            } catch (e: Exception) {
+                Log.e("THEME_PIC", "Failed to switch predefined theme", e)
+            }
+        }
+        
+        // Update navigation drawer header
+        updateFreshNavigationDrawerHeader()
+    }
+    
+    private fun updateNavDrawerHeaderBackground(isNight: Boolean) {
+        // Update the navigation drawer header background to match the current theme
+        val navHeaderBackground = findViewById<ImageView>(R.id.themeBackgroundImage)
+        if (navHeaderBackground != null) {
+            val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+            
+            if (selectedThemeIndex >= 0) {
+                // Check if we have day/night theme files saved
+                val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+                val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+                
+                val sourceFile = if (isNight) nightFile else dayFile
+                if (sourceFile.exists()) {
+                    Glide.with(this)
+                        .load(Uri.fromFile(sourceFile))
+                        .centerCrop()
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .skipMemoryCache(true)
+                        .into(navHeaderBackground)
+                    Log.d("NAV_DRAWER", "Updated header background to ${if (isNight) "night" else "day"} mode")
+                }
+            } else {
+                // No theme selected, use solid color background based on day/night mode
+                navHeaderBackground.setImageDrawable(null)
+                val backgroundColor = if (isNight) ContextCompat.getColor(this, R.color.black) else ContextCompat.getColor(this, R.color.white)
+                navHeaderBackground.setBackgroundColor(backgroundColor)
+                Log.d("NAV_DRAWER", "No theme selected, using ${if (isNight) "black" else "white"} background")
+            }
+        }
+    }
+
+    private fun updateAppLogo(isNight: Boolean) {
+        val appLogo = findViewById<ImageView>(R.id.appLogo)
+        if (appLogo != null) {
+            val logoDrawable = if (isNight) {
+                ContextCompat.getDrawable(this, R.drawable.timeless_textlogo_night)
+            } else {
+                ContextCompat.getDrawable(this, R.drawable.tymeless_textlogo)
+            }
+            appLogo.setImageDrawable(logoDrawable)
+            Log.d("APP_LOGO", "Updated app logo to ${if (isNight) "night" else "day"} mode")
+        } else {
+            Log.e("APP_LOGO", "App logo ImageView not found")
+        }
+    }
+
     private fun getGreetingMessage(name: String): String {
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         return when {
@@ -761,5 +1011,79 @@ class MainActivity : AppCompatActivity() {
             hour in 12..16 -> "Good Afternoon, $name"
             else -> "Good Evening, $name"
         }
+    }
+
+    private fun testNavDrawerColors() {
+        // Test method to manually toggle colors
+        val themePrefs = getSharedPreferences("theme_prefs", MODE_PRIVATE)
+        val currentIsNight = themePrefs.getBoolean("is_night_mode", false)
+        val newIsNight = !currentIsNight
+        
+        Log.d("NAV_DRAWER_TEST", "Testing color change from $currentIsNight to $newIsNight")
+        updateNavDrawerColors(newIsNight)
+        
+        // Save the new state
+        themePrefs.edit().putBoolean("is_night_mode", newIsNight).apply()
+    }
+
+    private fun setupThemeUpdateReceiver() {
+        val filter = IntentFilter(ThemeManager.THEME_UPDATE_ACTION)
+        themeUpdateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == ThemeManager.THEME_UPDATE_ACTION) {
+                    Log.d("THEME_UPDATE", "Received theme update broadcast. Applying new theme.")
+                    ThemeManager.applyTheme(this@MainActivity)
+                    val isNight = ThemeManager.isNightMode(this@MainActivity)
+                    updateNavDrawerColors(isNight)
+                    updateAppLogo(isNight)
+                    updateFreshNavigationDrawerHeader()
+                    // Re-apply theme header image if it exists
+                    val selectedThemeIndex = prefs.getInt("selected_theme_index", -1)
+                    val themeHeaderPicUri = prefs.getString("theme_header_pic_uri", null)
+                    Log.d("THEME_UPDATE", "Theme URI: $themeHeaderPicUri, Selected Index: $selectedThemeIndex")
+                    
+                    if (selectedThemeIndex >= 0 && themeHeaderPicUri != null && File(themeHeaderPicUri).exists()) {
+                        // Check if we have day/night theme files saved
+                        val dayFile = File(filesDir, "theme_header_pic_day.jpg")
+                        val nightFile = File(filesDir, "theme_header_pic_night.jpg")
+                        
+                        val sourceFile = if (isNight) nightFile else dayFile
+                        if (sourceFile.exists()) {
+                            Log.d("THEME_UPDATE", "Loading ${if (isNight) "night" else "day"} theme image: ${sourceFile.absolutePath}")
+                            Glide.with(this@MainActivity)
+                                .load(Uri.fromFile(sourceFile))
+                                .centerCrop()
+                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                .skipMemoryCache(true)
+                                .into(toolbarBackgroundImage)
+                            toolbarBackgroundImage.visibility = View.VISIBLE
+                            binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            Log.d("THEME_UPDATE", "Day/night theme image loaded successfully")
+                        } else {
+                            // Fallback to the saved theme file
+                            Log.d("THEME_UPDATE", "Loading fallback theme image: $themeHeaderPicUri")
+                            Glide.with(this@MainActivity)
+                                .load(Uri.fromFile(File(themeHeaderPicUri)))
+                                .centerCrop()
+                                .into(toolbarBackgroundImage)
+                            toolbarBackgroundImage.visibility = View.VISIBLE
+                            binding.appBarMain.toolbar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            Log.d("THEME_UPDATE", "Fallback theme image loaded successfully")
+                        }
+                    } else {
+                        Log.d("THEME_UPDATE", "No theme file found, using color")
+                        toolbarBackgroundImage.visibility = View.GONE
+                        val backgroundColor = if (isNight) ContextCompat.getColor(this@MainActivity, R.color.black) else ContextCompat.getColor(this@MainActivity, R.color.white)
+                        binding.appBarMain.toolbar.setBackgroundColor(backgroundColor)
+                    }
+                }
+            }
+        }
+        registerReceiver(themeUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(themeUpdateReceiver)
     }
 }

@@ -30,4 +30,22 @@ interface NoteDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrReplace(note: Note): Long
+
+    @Query("DELETE FROM notes")
+    suspend fun deleteAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(notes: List<Note>)
+
+    @Query("DELETE FROM notes WHERE deletedAt IS NOT NULL")
+    suspend fun deleteAllDeleted()
+
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY id DESC")
+    fun getAllNonDeletedNotes(): LiveData<List<Note>>
+
+    @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL ORDER BY id DESC")
+    suspend fun getAllDeletedNotes(): List<Note>
+
+    @Query("UPDATE notes SET content = :content WHERE id = :noteId")
+    suspend fun updateNoteContent(noteId: Int, content: String)
 } 

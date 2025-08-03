@@ -16,4 +16,10 @@
         android:name="com.example.diaryapp.ui.home.NotesHomeFragment"
         android:label="Notes Home"
         tools:layout="@layout/fragment_notes_home" />
+
+    <fragment
+        android:id="@+id/nav_recycle_bin"
+        android:name="com.example.diaryapp.ui.home.RecycleBinFragment"
+        android:label="Recycle Bin"
+        tools:layout="@layout/fragment_recycle_bin" />
 </navigation>

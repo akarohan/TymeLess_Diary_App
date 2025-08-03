@@ -46,7 +46,7 @@
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
-        <activity android:name=".ui.home.EditNoteActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".ui.home.EditNoteActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".LoginPageCustomizeActivity"
             android:exported="false"
@@ -54,6 +54,11 @@
         <activity android:name=".BackupRestoreActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".RestoreDataActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".PostAuthRouterActivity" />
+        <activity android:name=".ui.home.RecycleBinActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".ThemePictureSelectionActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".DiaryViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".NotesViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".ImageViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         
 
         
@@ -74,6 +79,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>

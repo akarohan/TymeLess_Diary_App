@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Lock body -->
+    <path
+        android:fillColor="#222222"
+        android:pathData="M24,48h48a4,4 0 0,1 4,4v24a4,4 0 0,1 -4,4H24a4,4 0 0,1 -4,-4V52a4,4 0 0,1 4,-4z"/>
+    <!-- Lock shackle -->
+    <path
+        android:strokeColor="#222222"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M32,48V32a16,16 0 0,1 32,0v16"/>
+    <!-- Key: circle head and shaft/teeth as paths -->
+    <!-- Key head (circle): center (74,76), radius 7 -->
+    <path
+        android:fillColor="#222222"
+        android:pathData="M74,69a7,7 0 1,0 0,14a7,7 0 1,0 0,-14z"/>
+    <!-- Key shaft: horizontal line -->
+    <path
+        android:strokeColor="#222222"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M81,76h15"/>
+    <!-- Key teeth: two small vertical lines -->
+    <path
+        android:strokeColor="#222222"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M88,76v6 M92,76v4"/>
+</vector> 

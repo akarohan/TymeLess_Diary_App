@@ -24,54 +24,55 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
         android:gravity="center_horizontal"
+        android:orientation="vertical"
         android:paddingTop="64dp"
         android:paddingBottom="32dp">
 
         <!-- Logo -->
         <ImageView
             android:id="@+id/timelessLogo"
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:src="@drawable/ic_timeless_logo"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
             android:layout_gravity="center_horizontal"
-            android:elevation="8dp"
-            android:contentDescription="Timeless Logo"
             android:background="@android:color/transparent"
+            android:contentDescription="Timeless Logo"
+            android:elevation="8dp"
             android:shadowColor="#80000000"
             android:shadowDx="0"
             android:shadowDy="2"
-            android:shadowRadius="8" />
+            android:shadowRadius="8"
+            android:src="@drawable/tymeless_main_logo"
+            android:scaleType="fitCenter" />
 
         <!-- Welcome Text -->
         <TextView
             android:id="@+id/welcomeText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome To\nTimeless !!!"
-            android:textSize="32sp"
-            android:textColor="#FFFFFF"
-            android:gravity="center"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="32dp"
             android:elevation="8dp"
+            android:gravity="center"
             android:shadowColor="#80000000"
             android:shadowDx="0"
             android:shadowDy="2"
-            android:shadowRadius="8" />
+            android:shadowRadius="8"
+            android:text="Welcome To\nTimeless !!!"
+            android:textColor="#FFFFFF"
+            android:textSize="32sp" />
 
         <!-- Login Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
-            android:layout_marginEnd="32dp"
             android:layout_marginTop="0dp"
+            android:layout_marginEnd="32dp"
             android:layout_marginBottom="0dp"
-            app:cardElevation="12dp"
-            app:cardCornerRadius="16dp"
             app:cardBackgroundColor="#F5F5F5"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="12dp"
             app:cardUseCompatPadding="true">
 
             <LinearLayout
@@ -80,73 +81,109 @@
                 android:orientation="vertical"
                 android:padding="24dp">
 
-                <EditText
-                    android:id="@+id/usernameInput"
+                <!-- Username with icon -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Username"
-                    android:textColor="#222222"
-                    android:textColorHint="#AAAAAA"
-                    android:background="@android:color/transparent"
-                    android:elevation="2dp"
-                    android:paddingBottom="4dp" />
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="2dp"
-                    android:background="#222222"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <EditText
-                    android:id="@+id/passwordInput"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Password"
-                    android:inputType="textPassword"
-                    android:textColor="#222222"
-                    android:textColorHint="#AAAAAA"
-                    android:background="@android:color/transparent"
-                    android:layout_marginTop="8dp"
-                    android:elevation="2dp"
-                    android:paddingBottom="4dp" />
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_user_placeholder"
+                        android:contentDescription="Username icon"
+                        android:layout_marginEnd="12dp"
+                        android:tint="#222222" />
+
+                    <EditText
+                        android:id="@+id/usernameInput"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:elevation="2dp"
+                        android:hint="Username"
+                        android:paddingBottom="4dp"
+                        android:textColor="#222222"
+                        android:textColorHint="#AAAAAA" />
+                </LinearLayout>
+
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="2dp"
-                    android:background="#222222"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginBottom="8dp"
+                    android:background="#222222" />
+
+                <!-- Password with icon -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_key"
+                        android:contentDescription="Password icon"
+                        android:layout_marginEnd="12dp"
+                        android:tint="#222222" />
+
+                    <EditText
+                        android:id="@+id/passwordInput"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:elevation="2dp"
+                        android:hint="Password"
+                        android:inputType="textPassword"
+                        android:paddingBottom="4dp"
+                        android:textColor="#222222"
+                        android:textColorHint="#AAAAAA" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="#222222" />
 
                 <TextView
                     android:id="@+id/passwordNote"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Note:- Password is not Recoverable"
-                    android:textColor="#222222"
-                    android:textStyle="bold"
                     android:layout_marginTop="8dp"
                     android:elevation="2dp"
                     android:shadowColor="#80FFFFFF"
                     android:shadowDx="0"
                     android:shadowDy="1"
-                    android:shadowRadius="2" />
+                    android:shadowRadius="2"
+                    android:text="Note:- Password is not Recoverable"
+                    android:textColor="#222222"
+                    android:textStyle="bold" />
 
                 <Button
                     android:id="@+id/submitButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="SIGN IN"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#222222"
                     android:layout_marginTop="24dp"
-                    android:elevation="4dp" />
+                    android:backgroundTint="#222222"
+                    android:elevation="4dp"
+                    android:text="SIGN IN"
+                    android:textColor="#FFFFFF" />
 
                 <Button
                     android:id="@+id/signupButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="SIGN UP"
-                    android:textColor="#FFFFFF"
-                    android:backgroundTint="#444444"
                     android:layout_marginTop="12dp"
-                    android:elevation="4dp" />
+                    android:backgroundTint="#444444"
+                    android:elevation="4dp"
+                    android:text="SIGN UP"
+                    android:textColor="#FFFFFF" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
     </LinearLayout>

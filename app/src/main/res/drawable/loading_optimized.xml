@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="48dp"
+            android:height="48dp"
+            android:viewportWidth="48"
+            android:viewportHeight="48">
+            
+            <path
+                android:name="loading_circle"
+                android:pathData="M24,4 A20,20 0 1,1 24,44 A20,20 0 1,1 24,4"
+                android:strokeWidth="4"
+                android:strokeColor="?android:textColorPrimary"
+                android:strokeLineCap="round"
+                android:fillColor="@android:color/transparent"/>
+        </vector>
+    </aapt:attr>
+    
+    <target android:name="loading_circle">
+        <aapt:attr name="android:animation">
+            <set android:ordering="sequentially">
+                <objectAnimator
+                    android:propertyName="trimPathEnd"
+                    android:duration="1000"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:interpolator="@android:interpolator/accelerate_decelerate"/>
+                <objectAnimator
+                    android:propertyName="trimPathStart"
+                    android:duration="1000"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:interpolator="@android:interpolator/accelerate_decelerate"/>
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector> 

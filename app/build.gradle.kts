@@ -129,4 +129,7 @@ dependencies {
 
     implementation("jp.wasabeef:blurry:4.0.1")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+    
+    // ViewPager2 for image viewer
+    implementation("androidx.viewpager2:viewpager2:1.0.0")
 }

@@ -2,85 +2,94 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="300dp">
+    android:layout_height="200dp">
 
-    <!-- Blurred background -->
+    <!-- Theme Picture Background -->
     <ImageView
-        android:id="@+id/blurredBackground"
+        android:id="@+id/themeBackgroundImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:contentDescription="Blurred cover"/>
+        android:src="@drawable/bg_icemountain_optimized"/>
 
-    <!-- Camera icon for cover (top right) -->
-    <ImageButton
-        android:id="@+id/coverCameraButton"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="12dp"
-        android:layout_marginEnd="12dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/ic_menu_camera"
-        android:contentDescription="Change cover photo"/>
-
-    <!-- Gradient overlay -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/gradient_bottom_to_white"/>
-
-    <!-- Profile content -->
+    <!-- Profile Content -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingTop="32dp">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
 
+        <!-- Profile Picture -->
         <FrameLayout
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:elevation="8dp">
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginEnd="16dp">
+
             <de.hdodenhof.circleimageview.CircleImageView
-                android:id="@+id/imageView"
+                android:id="@+id/navProfileImageView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:src="@drawable/ic_user_placeholder"
-                app:civ_border_width="1dp"
-                app:civ_border_color="@android:color/black"
-                android:layout_gravity="center"/>
-            <ImageButton
-                android:id="@+id/profileCameraButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_gravity="bottom|end"
-                android:layout_marginEnd="-4dp"
-                android:layout_marginBottom="-6dp"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_menu_camera"
-                android:contentDescription="Change profile photo"/>
+                app:civ_border_color="?android:textColorPrimary"
+                app:civ_border_width="2dp" />
+
         </FrameLayout>
 
-        <TextView
-            android:id="@+id/navUserName"
-            android:layout_width="wrap_content"
+        <!-- User Info -->
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Rohan"
-            android:textSize="32sp"
-            android:textColor="@android:color/black"
-            android:gravity="center"
-            android:layout_marginTop="8dp"
-            android:textStyle="bold"/>
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:maxWidth="180dp"
+            android:minWidth="120dp">
 
-        <TextView
-            android:id="@+id/navUserUsername"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="realrohan"
-            android:textColor="@android:color/black"
-            android:textSize="18sp"
-            android:gravity="center"
-            android:layout_marginBottom="16dp"/>
+            <!-- First Name -->
+            <TextView
+                android:id="@+id/navUserFirstName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Rohan"
+                android:textSize="22sp"
+                android:textColor="?android:textColorPrimary"
+                android:textStyle="bold"
+                android:layout_marginBottom="2dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:includeFontPadding="false"/>
+
+            <!-- Last Name -->
+            <TextView
+                android:id="@+id/navUserLastName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mahapatra"
+                android:textSize="22sp"
+                android:textColor="?android:textColorPrimary"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:includeFontPadding="false"/>
+
+            <!-- Username -->
+            <TextView
+                android:id="@+id/navUserUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@rohan"
+                android:textSize="16sp"
+                android:textColor="?android:textColorPrimary"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:includeFontPadding="false"/>
+
+        </LinearLayout>
+
     </LinearLayout>
-</FrameLayout>
+
+</FrameLayout> 

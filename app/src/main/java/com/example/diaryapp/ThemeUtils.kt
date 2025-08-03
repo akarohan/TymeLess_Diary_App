@@ -5,11 +5,9 @@ import androidx.core.content.ContextCompat
 
 object ThemeUtils {
     /**
-     * Get the current theme color
+     * Get the current theme color - always returns gray since theme color functionality is removed
      */
     fun getCurrentThemeColor(activity: Activity): Int {
-        val prefsColor = activity.getSharedPreferences("theme_prefs", Activity.MODE_PRIVATE)
-        val defaultColor = ContextCompat.getColor(activity, R.color.greyback)
-        return prefsColor.getInt("theme_color", defaultColor)
+        return ContextCompat.getColor(activity, R.color.greyback)
     }
 } 

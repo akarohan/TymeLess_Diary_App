@@ -5,4 +5,9 @@
     <dimen name="nav_header_vertical_spacing">8dp</dimen>
     <dimen name="nav_header_height">240dp</dimen>
     <dimen name="fab_margin">16dp</dimen>
+    <dimen name="card_corner_radius">16dp</dimen>
+    
+    <!-- Image indicator dot dimensions -->
+    <dimen name="dot_size">8dp</dimen>
+    <dimen name="dot_margin">4dp</dimen>
 </resources>

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/greyback"
+    android:background="@color/background"
     tools:context=".ui.home.HomeFragment">
 
     <include layout="@layout/header_main"
@@ -19,6 +19,7 @@
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@color/background"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -27,34 +28,14 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/diaryRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:clipToPadding="false"
+            android:paddingTop="6dp"
+            android:paddingBottom="84dp"
+            android:paddingEnd="11dp"
+            android:overScrollMode="never"/>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/addEntryFabMenu1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_page_lined"
-        app:backgroundTint="#222222"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/addEntryFab"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp"
-        android:layout_marginEnd="24dp"
-        app:tint="@null"/>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/addEntryFabMenu2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_add_white"
-        app:backgroundTint="#222222"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/addEntryFabMenu1"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp"
-        android:layout_marginEnd="24dp"
-        app:tint="@null"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/addEntryFab"
