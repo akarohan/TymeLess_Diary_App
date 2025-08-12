@@ -43,6 +43,12 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY id DESC")
     fun getAllNonDeletedNotes(): LiveData<List<Note>>
 
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY id DESC")
+    suspend fun getAllNonDeletedNotesSync(): List<Note>
+
+    @Query("SELECT * FROM notes WHERE deletedAt IS NULL ORDER BY id DESC")
+    fun getAllNonDeletedNotesBlocking(): List<Note>
+
     @Query("SELECT * FROM notes WHERE deletedAt IS NOT NULL ORDER BY id DESC")
     suspend fun getAllDeletedNotes(): List<Note>
 

@@ -272,6 +272,11 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, com.example.diaryapp.ui.home.RecycleBinActivity::class.java))
         }
         
+        findViewById<LinearLayout>(R.id.nav_version_updates)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            startActivity(Intent(this, VersionUpdatesActivity::class.java))
+        }
+        
         findViewById<LinearLayout>(R.id.nav_logout)?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.END)
             // Clear only session-related preferences, preserve login credentials and images
@@ -540,7 +545,7 @@ class MainActivity : AppCompatActivity() {
         val iconIds = listOf(
             R.id.nav_home_icon, R.id.nav_settings_icon, R.id.nav_customize_login_icon,
             R.id.nav_change_theme_pic_icon, R.id.nav_backup_restore_icon,
-            R.id.nav_recycle_bin_icon, R.id.nav_logout_icon
+            R.id.nav_recycle_bin_icon, R.id.nav_version_updates_icon, R.id.nav_logout_icon
         )
         
         iconIds.forEach { iconId ->
@@ -557,7 +562,8 @@ class MainActivity : AppCompatActivity() {
         val textIds = listOf(
             R.id.nav_home_text, R.id.nav_settings_text, R.id.nav_customize_login_text,
             R.id.nav_change_theme_pic_text, R.id.nav_backup_restore_text,
-            R.id.nav_recycle_bin_text, R.id.nav_logout_text, R.id.navAppVersion, R.id.navBuiltBy
+            R.id.nav_recycle_bin_text, R.id.nav_version_updates_text, R.id.nav_logout_text, 
+            R.id.navAppVersion, R.id.navBuiltBy
         )
         
         textIds.forEach { textId ->
@@ -610,6 +616,8 @@ class MainActivity : AppCompatActivity() {
         
         Log.d("NAV_DRAWER", "updateNavDrawerColors completed")
     }
+
+
 
     private fun updateDateText() {
         val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }

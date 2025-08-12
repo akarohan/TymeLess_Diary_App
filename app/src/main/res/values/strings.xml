@@ -11,4 +11,6 @@
     <string name="menu_slideshow">Slideshow</string>
 
     <string name="app_name">TymeLess</string>
+    <string name="widget_notes_title">Quick Notes</string>
+    <string name="widget_notes_no_notes">No notes yet</string>
 </resources>

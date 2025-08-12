@@ -532,4 +532,26 @@ class NotesViewerActivity : AppCompatActivity() {
             }
         }
     }
+
+    override fun onBackPressed() {
+        // Check if launched from widget
+        val fromWidget = intent.getBooleanExtra("from_widget", false)
+        if (fromWidget) {
+            // If launched from widget, ALWAYS exit to device home screen for security
+            // Never allow navigation to app's main interface
+            
+            // Launch home screen and finish this activity
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(homeIntent)
+            
+            // Finish this activity only (don't kill entire app process)
+            finish()
+            return
+        }
+        
+        super.onBackPressed()
+    }
 } 

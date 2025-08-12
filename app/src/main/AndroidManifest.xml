@@ -59,6 +59,7 @@
         <activity android:name=".DiaryViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".NotesViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".ImageViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".VersionUpdatesActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         
 
         
@@ -74,6 +75,18 @@
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />
+        
+        <!-- Widget Provider -->
+        <receiver
+            android:name=".widget.NotesWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/notes_widget_info" />
+        </receiver>
     </application>
 
     <uses-permission android:name="android.permission.CAMERA" />

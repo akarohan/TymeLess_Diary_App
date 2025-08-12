@@ -23,5 +23,7 @@
     <color name="parrot_note_card">#A8E639</color>
     <color name="red_note_card">#FF6F61</color>
     <color name="skyblue_note_card">#29B6F6</color>
+    <color name="light_gray">#CCCCCC</color>
+    <color name="dark_gray">#666666</color>
     <!-- Add any other existing colors below -->
 </resources>

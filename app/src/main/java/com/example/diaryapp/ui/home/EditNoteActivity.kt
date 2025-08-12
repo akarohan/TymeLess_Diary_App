@@ -48,6 +48,7 @@ import java.util.*
 import com.example.diaryapp.R
 import java.text.SimpleDateFormat
 import android.graphics.Rect
+import com.example.diaryapp.widget.NotesWidgetProvider
 
 class EditNoteActivity : AppCompatActivity() {
     private lateinit var titleEditText: EditText
@@ -86,6 +87,158 @@ class EditNoteActivity : AppCompatActivity() {
     private var isSaving = false
     private var isImageAdding = false
     private var thumbnailUri: Uri? = null
+    private var lastSavedContent: String = "" // Track last saved content to prevent unnecessary saves
+    private var saveHandler: android.os.Handler? = null // Handler for debounced saves
+    private var hasPendingSave: Boolean = false // Track if there's a pending save operation
+    
+    // Single save function to prevent duplicates
+    private fun saveNote() {
+        // Cancel any pending saves
+        saveHandler?.removeCallbacksAndMessages(null)
+        hasPendingSave = false
+        
+        if (isSaving) {
+            Log.d("SAVE_DEBUG", "Save already in progress, skipping")
+            return
+        }
+        
+        isSaving = true
+        Log.d("SAVE_DEBUG", "Starting save operation")
+        
+        try {
+            val title = titleEditText.text.toString().trim()
+            val content = mainEditText.text.toString()
+            
+            val imagePathsToSave = imageUris.map { uri -> 
+                when {
+                    uri.scheme == "file" -> {
+                        val file = File(uri.path ?: "")
+                        if (file.absolutePath.startsWith(filesDir.absolutePath)) {
+                            file.name
+                        } else {
+                            uri.path ?: uri.toString()
+                        }
+                    }
+                    else -> uri.toString()
+                }
+            }
+            
+            val thumbnailPathToSave = when {
+                noteType == "A" && imagePathsToSave.isNotEmpty() -> imagePathsToSave.first()
+                thumbnailUri != null -> {
+                    val file = File(thumbnailUri!!.path ?: "")
+                    if (file.absolutePath.startsWith(filesDir.absolutePath)) {
+                        file.name
+                    } else {
+                        thumbnailUri!!.path ?: thumbnailUri.toString()
+                    }
+                }
+                else -> null
+            }
+            
+            val checklistContent = if (checklistItems.isNotEmpty()) {
+                val checklistJson = checklistItems.joinToString("|") { item ->
+                    val text = item.text.trim()
+                    val cleanText = text.replace(":", "\\:").replace("|", "\\|")
+                    "$cleanText:${if (item.isChecked) "1" else "0"}"
+                }
+                "CHECKLIST:$checklistJson"
+            } else ""
+            
+            val finalContent = if (checklistRecyclerView.visibility == View.VISIBLE) {
+                if (checklistContent.isNotEmpty()) {
+                    if (content.isNotEmpty()) "$content\n\n$checklistContent" else checklistContent
+                } else {
+                    if (content.isNotEmpty()) "$content\n\nCHECKLIST:" else "CHECKLIST:"
+                }
+            } else {
+                content
+            }
+            
+            // Create content hash to check for changes
+            val contentHash = "$noteId|$title|$finalContent|${imagePathsToSave.joinToString(",")}|${audioItems.size}|${checklistItems.size}"
+            
+            // Only save if content has changed or it's a new note
+            if (contentHash == lastSavedContent && noteId != 0) {
+                Log.d("SAVE_DEBUG", "Content unchanged, skipping save. Hash: $contentHash")
+                return
+            }
+            
+            Log.d("SAVE_DEBUG", "Content changed, proceeding with save. Old hash: $lastSavedContent, New hash: $contentHash")
+            
+            // Check if note should be saved
+            val hasImages = imageUris.isNotEmpty()
+            val hasAudio = audioItems.isNotEmpty()
+            val hasChecklist = checklistRecyclerView.visibility == View.VISIBLE
+            
+            if (shouldSaveNote(title, finalContent, hasImages, hasAudio, hasChecklist)) {
+                val note = Note(
+                    id = noteId,
+                    title = title,
+                    content = finalContent,
+                    imagePaths = imagePathsToSave,
+                    audioList = audioItems,
+                    thumbnailPath = thumbnailPathToSave,
+                    noteType = noteType
+                )
+                
+                lifecycleScope.launch {
+                    try {
+                        if (noteId == 0) {
+                            // New note - insert and get the generated ID
+                            val insertResult = viewModel.insertOrReplace(note.copy(id = 0))
+                            noteId = insertResult.toInt()
+                            Log.d("SAVE_DEBUG", "New note inserted with ID: $noteId")
+                        } else {
+                            // Existing note - update
+                            viewModel.update(note)
+                            Log.d("SAVE_DEBUG", "Existing note updated with ID: $noteId")
+                        }
+                        
+                        // Update saved content hash
+                        lastSavedContent = contentHash
+                        Log.d("SAVE_DEBUG", "Save completed successfully")
+                        
+                        // Refresh widget
+                        NotesWidgetProvider.refreshWidgets(this@EditNoteActivity)
+                    } catch (e: Exception) {
+                        Log.e("SAVE_DEBUG", "Error saving note", e)
+                    }
+                }
+            } else {
+                Log.d("SAVE_DEBUG", "Note not saved - empty or invalid")
+            }
+        } catch (e: Exception) {
+            Log.e("SAVE_DEBUG", "Error in saveNote", e)
+        } finally {
+            isSaving = false
+            Log.d("SAVE_DEBUG", "Save operation completed")
+        }
+    }
+    
+    // Auto-save with debounce
+    private fun autoSaveNote() {
+        if (hasPendingSave || isSaving) {
+            Log.d("SAVE_DEBUG", "Auto-save skipped - save already pending or in progress")
+            return
+        }
+        
+        hasPendingSave = true
+        saveHandler?.removeCallbacksAndMessages(null)
+        saveHandler?.postDelayed({
+            if (hasPendingSave) {
+                saveNote()
+            }
+        }, 1000) // 1 second delay
+    }
+    
+    // Force save (immediate)
+    private fun forceSaveNote() {
+        // Cancel any pending auto-saves and force immediate save
+        saveHandler?.removeCallbacksAndMessages(null)
+        hasPendingSave = false
+        saveNote()
+    }
 
     // Thumbnail section UI elements
     private lateinit var thumbnailCardView: androidx.cardview.widget.CardView
@@ -137,6 +290,7 @@ class EditNoteActivity : AppCompatActivity() {
         
         // Apply theme
         isSaving = false // Reset save flag on activity start
+        saveHandler = android.os.Handler(android.os.Looper.getMainLooper()) // Initialize save handler
         
         // Initialize database
         viewModel = ViewModelProvider(this)[NotesHomeViewModel::class.java]
@@ -465,12 +619,10 @@ class EditNoteActivity : AppCompatActivity() {
         
         // Save button
         saveButton.setOnClickListener {
-            isSaving = false // Reset flag so manual save always runs
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                autoSaveNote()
-                setResult(Activity.RESULT_OK)
-                finish()
-            }, 300)
+            // Force save and finish
+            forceSaveNote()
+            setResult(Activity.RESULT_OK)
+            finish()
         }
     }
 
@@ -510,23 +662,11 @@ class EditNoteActivity : AppCompatActivity() {
                         noteType = noteType
                     )
                     
-                    lifecycleScope.launch {
-                        try {
-                            val newId = viewModel.insertOrReplace(initialNote)
-                            noteId = newId.toInt()
-                            Log.d("CHECKLIST_DEBUG", "Initial note created with ID: $noteId")
-                            
-                            // Now add the first checklist item
-                            checklistAdapter.addItem()
-                            
-                            // Force save after a delay to ensure everything is saved
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                forceSaveNote()
-                            }, 300)
-                        } catch (e: Exception) {
-                            Log.e("EditNoteActivity", "Error creating initial note", e)
-                        }
-                    }
+                    // Just add the first checklist item - the unified save system will handle saving
+                    checklistAdapter.addItem()
+                    
+                    // Use unified save system instead of direct database call
+                    forceSaveNote()
                 } else {
                     // For existing notes, just add an item if empty
                     checklistAdapter.addItem()
@@ -627,6 +767,19 @@ class EditNoteActivity : AppCompatActivity() {
                         
                         titleEditText.setText(it.title)
                         loadContent(it.content)
+                        
+                        // Initialize the last saved content hash for change detection
+                        val loadedImagePaths = it.imagePaths
+                        val loadedAudioCount = it.audioList.size
+                        val loadedChecklistCount = if (it.content.contains("CHECKLIST:")) {
+                            // Count actual checklist items
+                            val checklistMatch = Regex("CHECKLIST:(.+)").find(it.content)
+                            if (checklistMatch != null) {
+                                checklistMatch.groupValues[1].split("|").size
+                            } else 0
+                        } else 0
+                        lastSavedContent = "$noteId|${it.title}|${it.content}|${loadedImagePaths.joinToString(",")}|$loadedAudioCount|$loadedChecklistCount"
+                        Log.d("SAVE_DEBUG", "Initialized lastSavedContent hash: $lastSavedContent")
                     }
                 }
             } catch (e: Exception) {
@@ -748,11 +901,9 @@ class EditNoteActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Force save when leaving the activity to ensure checklist items are saved
+        // Auto-save when leaving the activity (debounced to prevent duplicates)
         if (!isSaving && !isImageAdding) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                forceSaveNote()
-            }, 100)
+            autoSaveNote()
         }
     }
     
@@ -772,217 +923,6 @@ class EditNoteActivity : AppCompatActivity() {
         }
         
         return true
-    }
-
-    private fun forceSaveNote() {
-        // Force save regardless of saving flag to ensure checklist items are saved
-        try {
-            val title = titleEditText.text.toString().trim()
-            val content = mainEditText.text.toString()
-            
-            val imagePathsToSave = imageUris.map { uri -> 
-                when {
-                    uri.scheme == "file" -> {
-                        val file = File(uri.path ?: "")
-                        if (file.absolutePath.startsWith(filesDir.absolutePath)) {
-                            file.name
-                        } else {
-                            uri.path ?: uri.toString()
-                        }
-                    }
-                    else -> uri.toString()
-                }
-            }
-            
-            // FIXED: Handle thumbnail for A notes
-            val thumbnailPathToSave = when {
-                noteType == "A" && imagePathsToSave.isNotEmpty() -> {
-                    // For A notes, use the first image as thumbnail
-                    imagePathsToSave.first()
-                }
-                thumbnailUri != null -> {
-                    // Use existing thumbnail
-                    val file = File(thumbnailUri!!.path ?: "")
-                    if (file.absolutePath.startsWith(filesDir.absolutePath)) {
-                        file.name
-                    } else {
-                        thumbnailUri!!.path ?: thumbnailUri.toString()
-                    }
-                }
-                else -> null
-            }
-            
-            // FIXED: Always save all checklist items, including empty ones
-            val checklistContent = if (checklistItems.isNotEmpty()) {
-                val checklistJson = checklistItems.joinToString("|") { item ->
-                    val text = item.text.trim()
-                    val cleanText = text.replace(":", "\\:").replace("|", "\\|")
-                    "$cleanText:${if (item.isChecked) "1" else "0"}"
-                }
-                "CHECKLIST:$checklistJson"
-            } else ""
-            
-            Log.d("CHECKLIST_DEBUG", "=== FORCE SAVING ===")
-            Log.d("CHECKLIST_DEBUG", "Checklist items count: ${checklistItems.size}")
-            Log.d("CHECKLIST_DEBUG", "Checklist items: ${checklistItems.map { "'${it.text}' (${it.isChecked})" }}")
-            Log.d("CHECKLIST_DEBUG", "Checklist content: $checklistContent")
-            
-            // FIXED: Always include checklist content if checklist mode was activated
-            val finalContent = if (checklistRecyclerView.visibility == View.VISIBLE) {
-                if (checklistContent.isNotEmpty()) {
-                    if (content.isNotEmpty()) "$content\n\n$checklistContent" else checklistContent
-                } else {
-                    // Even if no items, preserve checklist mode
-                    if (content.isNotEmpty()) "$content\n\nCHECKLIST:" else "CHECKLIST:"
-                }
-            } else {
-                content
-            }
-            
-            Log.d("CHECKLIST_DEBUG", "Final content to force save: $finalContent")
-            
-            // Check if note should be saved
-            val hasImages = imageUris.isNotEmpty()
-            val hasAudio = audioItems.isNotEmpty()
-            val hasChecklist = checklistRecyclerView.visibility == View.VISIBLE
-            
-            if (shouldSaveNote(title, finalContent, hasImages, hasAudio, hasChecklist)) {
-                val note = Note(
-                    id = noteId,
-                    title = title,
-                    content = finalContent,
-                    imagePaths = imagePathsToSave,
-                    audioList = audioItems,
-                    thumbnailPath = thumbnailPathToSave,
-                    noteType = noteType
-                )
-                
-                lifecycleScope.launch {
-                    try {
-                        val newId = viewModel.insertOrReplace(note)
-                        if (noteId == 0) noteId = newId.toInt()
-                        Log.d("CHECKLIST_DEBUG", "Note force saved successfully with ID: $noteId")
-                    } catch (e: Exception) {
-                        Log.e("EditNoteActivity", "Error force saving note to database", e)
-                    }
-                }
-            } else {
-                Log.d("EditNoteActivity", "Note not saved - empty or untitled")
-            }
-        } catch (e: Exception) {
-            Log.e("EditNoteActivity", "Error in forceSaveNote", e)
-        }
-    }
-
-    private fun autoSaveNote() {
-        if (isSaving) return
-        isSaving = true
-        
-        try {
-            val title = titleEditText.text.toString().trim()
-            val content = mainEditText.text.toString()
-            
-            val imagePathsToSave = imageUris.map { uri -> 
-                when {
-                    uri.scheme == "file" -> {
-                        val file = File(uri.path ?: "")
-                        if (file.absolutePath.startsWith(filesDir.absolutePath)) {
-                            file.name
-                        } else {
-                            uri.path ?: uri.toString()
-                        }
-                    }
-                    else -> uri.toString()
-                }
-            }
-            
-            // FIXED: Handle thumbnail for A notes
-            val thumbnailPathToSave = when {
-                noteType == "A" && imagePathsToSave.isNotEmpty() -> {
-                    // For A notes, use the first image as thumbnail
-                    imagePathsToSave.first()
-                }
-                thumbnailUri != null -> {
-                    // Use existing thumbnail
-                    val file = File(thumbnailUri!!.path ?: "")
-                    if (file.absolutePath.startsWith(filesDir.absolutePath)) {
-                        file.name
-                    } else {
-                        thumbnailUri!!.path ?: thumbnailUri.toString()
-                    }
-                }
-                else -> null
-            }
-            
-            // FIXED: Always save all checklist items, including empty ones
-            val checklistContent = if (checklistItems.isNotEmpty()) {
-                val checklistJson = checklistItems.joinToString("|") { item ->
-                    val text = item.text.trim()
-                    val cleanText = text.replace(":", "\\:").replace("|", "\\|")
-                    "$cleanText:${if (item.isChecked) "1" else "0"}"
-                }
-                "CHECKLIST:$checklistJson"
-            } else ""
-            
-            Log.d("CHECKLIST_DEBUG", "=== SAVING ===")
-            Log.d("CHECKLIST_DEBUG", "Checklist items count: ${checklistItems.size}")
-            Log.d("CHECKLIST_DEBUG", "Checklist items: ${checklistItems.map { "'${it.text}' (${it.isChecked})" }}")
-            Log.d("CHECKLIST_DEBUG", "Checklist content: $checklistContent")
-            
-            // FIXED: Always include checklist content if checklist mode was activated
-            val finalContent = if (checklistRecyclerView.visibility == View.VISIBLE) {
-                if (checklistContent.isNotEmpty()) {
-                    if (content.isNotEmpty()) "$content\n\n$checklistContent" else checklistContent
-                } else {
-                    // Even if no items, preserve checklist mode
-                    if (content.isNotEmpty()) "$content\n\nCHECKLIST:" else "CHECKLIST:"
-                }
-            } else {
-                content
-            }
-            
-            Log.d("CHECKLIST_DEBUG", "Final content to save: $finalContent")
-            
-            // Check if note should be saved
-            val hasImages = imageUris.isNotEmpty()
-            val hasAudio = audioItems.isNotEmpty()
-            val hasChecklist = checklistRecyclerView.visibility == View.VISIBLE
-            
-            if (shouldSaveNote(title, finalContent, hasImages, hasAudio, hasChecklist)) {
-                val note = Note(
-                    id = noteId,
-                    title = title,
-                    content = finalContent,
-                    imagePaths = imagePathsToSave,
-                    audioList = audioItems,
-                    thumbnailPath = thumbnailPathToSave,
-                    noteType = noteType
-                )
-                
-                lifecycleScope.launch {
-                    try {
-                        val newId = viewModel.insertOrReplace(note)
-                        if (noteId == 0) noteId = newId.toInt()
-                        Log.d("CHECKLIST_DEBUG", "Note saved successfully with ID: $noteId")
-                    } catch (e: Exception) {
-                        Log.e("EditNoteActivity", "Error saving note to database", e)
-                        // Retry once after a short delay
-                        delay(100)
-                        try {
-                            val retryId = viewModel.insertOrReplace(note)
-                            if (noteId == 0) noteId = retryId.toInt()
-                            Log.d("CHECKLIST_DEBUG", "Note saved successfully on retry with ID: $noteId")
-                        } catch (retryException: Exception) {
-                            Log.e("EditNoteActivity", "Error saving note on retry", retryException)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("EditNoteActivity", "Error in autoSaveNote", e)
-        } finally {
-            isSaving = false
-        }
     }
 
     override fun onResume() {
@@ -1161,9 +1101,27 @@ class EditNoteActivity : AppCompatActivity() {
         Log.d("CHECKLIST_DEBUG", "Checklist items before save: ${checklistItems.map { "'${it.text}' (${it.isChecked})" }}")
         Log.d("CHECKLIST_DEBUG", "Checklist visibility: ${checklistRecyclerView.visibility == View.VISIBLE}")
         
-        autoSaveNote()
+        forceSaveNote()
+        
+        // Check if launched from widget
+        val fromWidget = intent.getBooleanExtra("from_widget", false)
+        if (fromWidget) {
+            // If launched from widget, ALWAYS exit to device home screen for security
+            // Never allow navigation to app's main interface
+            
+            // Launch home screen and finish this activity
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(homeIntent)
+            
+            // Finish this activity only (don't kill entire app process)
+            finish()
+            return
+        }
+        
         super.onBackPressed()
     }
 
-    // Removed updateNoteTypeIndicator() function
-} 
+}

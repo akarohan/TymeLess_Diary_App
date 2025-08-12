@@ -28,6 +28,7 @@ import android.widget.Button
 import android.view.LayoutInflater as AndroidLayoutInflater
 import com.example.diaryapp.ThemeManager
 import android.widget.LinearLayout
+import com.example.diaryapp.widget.NotesWidgetProvider
 
 class NotesHomeFragment : Fragment() {
     private var _binding: FragmentNotesHomeBinding? = null
@@ -228,6 +229,9 @@ class NotesHomeFragment : Fragment() {
                 // Show Snackbar: Moved to Recycle Bin
                 val rootView = requireActivity().findViewById<View>(android.R.id.content)
                 com.google.android.material.snackbar.Snackbar.make(rootView, "Moved to Recycle Bin", 3000).show()
+                
+                // Refresh the widget after deleting note
+                NotesWidgetProvider.refreshWidgets(requireContext())
             } else {
                 Toast.makeText(requireContext(), "Incorrect password", Toast.LENGTH_SHORT).show()
                 passwordInput.text.clear()
@@ -282,6 +286,9 @@ class NotesHomeFragment : Fragment() {
             // Show Snackbar: Moved to Recycle Bin
             val rootView = requireActivity().findViewById<View>(android.R.id.content)
             com.google.android.material.snackbar.Snackbar.make(rootView, "Moved to Recycle Bin", 3000).show()
+            
+            // Refresh the widget after deleting note
+            NotesWidgetProvider.refreshWidgets(requireContext())
             dialog.dismiss()
         }
         
