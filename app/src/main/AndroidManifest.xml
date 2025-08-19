@@ -59,7 +59,15 @@
         <activity android:name=".DiaryViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".NotesViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
         <activity android:name=".ImageViewerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
-        <activity android:name=".VersionUpdatesActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+
+        <activity android:name=".HealthConnectActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".GoogleDriveFileBrowserActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".ScreenTimeInputActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".HealthDataInputActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        <activity android:name=".LocationPickerActivity" android:theme="@style/Theme.DiaryApp.NoActionBar" />
+        
+        
+
         
 
         
@@ -76,6 +84,11 @@
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />
         
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCXQKrNB9J8-pXXeDbiImt9m6P3QOTDG8I" />
+        
         <!-- Widget Provider -->
         <receiver
             android:name=".widget.NotesWidgetProvider"
@@ -89,11 +102,27 @@
         </receiver>
     </application>
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    
+
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    
+    <!-- Health Connect Permissions -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.WRITE_STEPS" />
+    
+    <!-- Usage Stats Permission for Screen Time -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    
+    <!-- Location Permissions for Google Maps -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+        
 </manifest>

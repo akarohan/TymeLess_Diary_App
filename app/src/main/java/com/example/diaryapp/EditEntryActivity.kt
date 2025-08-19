@@ -48,6 +48,9 @@ import kotlinx.coroutines.delay
 import android.view.animation.AlphaAnimation
 import android.content.Intent
 import android.util.Log
+import com.example.diaryapp.BackupRestoreActivity
+import com.example.diaryapp.utils.LocationUtils
+import java.time.LocalDate
 
 class EditEntryActivity : AppCompatActivity() {
     private lateinit var richEditor: RichEditor
@@ -78,9 +81,16 @@ class EditEntryActivity : AppCompatActivity() {
     private var mediaPlayer: MediaPlayer? = null
     private var currentlyPlayingIndex: Int? = null
     private lateinit var btnMic: ImageButton
+    private lateinit var btnScreenTime: ImageButton
+    private lateinit var btnLocation: ImageButton
     private val imageUris = mutableListOf<Uri>()
     private val audioItems = mutableListOf<AudioItem>()
-    private var currentMood = 1 // 0 = sad, 1 = happy
+
+    private var currentLatitude: Double? = null
+    private var currentLongitude: Double? = null
+    private var currentLocationName: String? = null
+    private var currentAddress: String? = null
+    private lateinit var locationUtils: LocationUtils
 
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -105,6 +115,21 @@ class EditEntryActivity : AppCompatActivity() {
         }
     }
 
+    private val locationPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.let { data ->
+                currentLatitude = data.getDoubleExtra(LocationPickerActivity.EXTRA_LATITUDE, 0.0)
+                currentLongitude = data.getDoubleExtra(LocationPickerActivity.EXTRA_LONGITUDE, 0.0)
+                currentLocationName = data.getStringExtra(LocationPickerActivity.EXTRA_LOCATION_NAME)
+                currentAddress = data.getStringExtra(LocationPickerActivity.EXTRA_ADDRESS)
+                
+                // Update button appearance to show location is set
+                btnLocation.setColorFilter(ContextCompat.getColor(this@EditEntryActivity, R.color.green))
+                Toast.makeText(this@EditEntryActivity, "Location added: ${currentLocationName ?: currentAddress}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_entry)
@@ -112,6 +137,9 @@ class EditEntryActivity : AppCompatActivity() {
         // Apply theme and refresh edit text colors
         ThemeManager.applyTheme(this)
         ThemeManager.refreshEditTextColors(this)
+        
+        // Initialize location utils
+        locationUtils = LocationUtils(this@EditEntryActivity)
         
         mainEditText = findViewById(R.id.mainEditText)
 
@@ -144,19 +172,43 @@ class EditEntryActivity : AppCompatActivity() {
                 imageBlockAdapter.notifyDataSetChanged()
                 audioChipAdapter.notifyDataSetChanged()
                 
-                // Load mood value - handle both old 11-value system and new 2-value system
-                val oldMood = entry.mood
-                currentMood = when {
-                    oldMood <= 1 -> oldMood // Already in new 2-value system (0 or 1)
-                    oldMood <= 5 -> 0 // Old system: 0-5 = sad
-                    else -> 1 // Old system: 6-10 = happy
+                // Load location data
+                currentLatitude = entry.latitude
+                currentLongitude = entry.longitude
+                currentLocationName = entry.locationName
+                currentAddress = entry.address
+                
+                // Update location button appearance if location exists
+                if (currentLatitude != null && currentLongitude != null) {
+                    btnLocation.setColorFilter(ContextCompat.getColor(this@EditEntryActivity, R.color.green))
                 }
 
             } else {
-                // Initialize with sad mood for new entries
-                currentMood = 0
+                // Initialize new entry
                 
                 titleEditText.setText("")
+                
+                // Auto-save current location for new entries (only if location permissions are granted)
+                if (ActivityCompat.checkSelfPermission(this@EditEntryActivity, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    lifecycleScope.launch {
+                        try {
+                            val location = locationUtils.getCurrentLocation()
+                            if (location != null) {
+                                val address = locationUtils.getAddressFromCoordinates(location.first, location.second)
+                                currentLatitude = location.first
+                                currentLongitude = location.second
+                                currentAddress = address
+                                // Extract city name for location name
+                                currentLocationName = extractCityFromAddress(address)
+                                
+                                // Update location button appearance
+                                btnLocation.setColorFilter(ContextCompat.getColor(this@EditEntryActivity, R.color.green))
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("EditEntry", "Error getting current location", e)
+                        }
+                    }
+                }
                 mainEditText.setText("")
                 entryId = null
                 imageUris.clear()
@@ -176,7 +228,7 @@ class EditEntryActivity : AppCompatActivity() {
             val month = calendar.get(java.util.Calendar.MONTH)
             val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
             val datePickerDialog = android.app.DatePickerDialog(
-                this,
+                this@EditEntryActivity,
                 { _, y, m, d ->
                     calendar.set(y, m, d)
                     entryDate = calendar.timeInMillis
@@ -208,7 +260,7 @@ class EditEntryActivity : AppCompatActivity() {
                 android.util.Log.e("EditEntryActivity", "Invalid position for deletion: $position, list size: ${imageUris.size}")
             }
         }
-        imagesRecyclerView.layoutManager = GridLayoutManager(this, 2)
+        imagesRecyclerView.layoutManager = GridLayoutManager(this@EditEntryActivity, 2)
         imagesRecyclerView.adapter = imageBlockAdapter
 
         btnGallery.setOnClickListener {
@@ -216,15 +268,15 @@ class EditEntryActivity : AppCompatActivity() {
         }
 
         btnCamera.setOnClickListener {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+            if (ActivityCompat.checkSelfPermission(this@EditEntryActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this@EditEntryActivity, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
             } else {
                 val photoUri = createImageUri()
                 if (photoUri != null) {
                     imageUri = photoUri
                     cameraLauncher.launch(photoUri)
                 } else {
-                    Toast.makeText(this, "Failed to create image file. Please try again.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EditEntryActivity, "Failed to create image file. Please try again.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -248,11 +300,11 @@ class EditEntryActivity : AppCompatActivity() {
         btnStrikethrough.paintFlags = btnStrikethrough.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
 
         btnMic = findViewById(R.id.btnMic)
-        btnMic.setColorFilter(ContextCompat.getColor(this, R.color.black)) // Set initial color
+        btnMic.setColorFilter(ContextCompat.getColor(this@EditEntryActivity, R.color.black)) // Set initial color
         
         btnMic.setOnClickListener {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
+            if (ActivityCompat.checkSelfPermission(this@EditEntryActivity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this@EditEntryActivity, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_RECORD_AUDIO_PERMISSION)
             } else {
                 if (isRecording) {
                     stopRecording()
@@ -260,6 +312,29 @@ class EditEntryActivity : AppCompatActivity() {
                     startRecording()
                 }
             }
+        }
+
+        btnScreenTime = findViewById(R.id.btnScreenTime)
+        btnScreenTime.setColorFilter(ContextCompat.getColor(this, R.color.black)) // Set initial color
+        
+        btnScreenTime.setOnClickListener {
+            openScreenTimeInput()
+        }
+
+        btnLocation = findViewById(R.id.btnLocation)
+        btnLocation.setColorFilter(ContextCompat.getColor(this, R.color.black)) // Set initial color
+        
+        btnLocation.setOnClickListener {
+            // Show a dialog to confirm location update
+            android.app.AlertDialog.Builder(this@EditEntryActivity)
+                .setTitle("Update Location")
+                .setMessage("Do you want to update the location for this entry?")
+                .setPositiveButton("Update") { _, _ ->
+                    val intent = Intent(this@EditEntryActivity, LocationPickerActivity::class.java)
+                    locationPickerLauncher.launch(intent)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         audioRecyclerView = findViewById(R.id.audioRecyclerView)
@@ -312,7 +387,10 @@ class EditEntryActivity : AppCompatActivity() {
                 imagePaths = imagePaths,
                 title = title,
                 audioList = audioItems.toList(),
-                mood = currentMood
+                latitude = currentLatitude,
+                longitude = currentLongitude,
+                locationName = currentLocationName,
+                address = currentAddress
             )
         } else {
             // Allow auto-save to create a new entry if not empty
@@ -322,7 +400,10 @@ class EditEntryActivity : AppCompatActivity() {
                 imagePaths = imagePaths,
                 title = title,
                 audioList = audioItems.toList(),
-                mood = currentMood
+                latitude = currentLatitude,
+                longitude = currentLongitude,
+                locationName = currentLocationName,
+                address = currentAddress
             )
         }
         lifecycleScope.launch {
@@ -341,8 +422,38 @@ class EditEntryActivity : AppCompatActivity() {
             if (!autoSave) {
                 android.widget.Toast.makeText(this@EditEntryActivity, "Entry saved", android.widget.Toast.LENGTH_SHORT).show()
                 finish()
+            } else {
+                // Trigger automatic backup after auto-save
+                BackupRestoreActivity.performAutomaticBackup(this@EditEntryActivity)
             }
         }
+    }
+    
+    private fun extractCityFromAddress(address: String?): String {
+        if (address.isNullOrEmpty()) return "Location"
+        
+        // Split address by commas and look for city
+        val parts = address.split(",").map { it.trim() }
+        
+        // For Indian addresses: typically format is "Street, Area, City, State PIN, Country"
+        // Filter out parts that are likely not cities
+        val cityCandidates = parts.filter { part ->
+            part.isNotEmpty() && 
+            part.length > 2 && 
+            part.length <= 20 &&
+            !part.matches(Regex("\\d{5,6}")) && // Skip postal codes
+            !part.matches(Regex("\\d+\\s*[A-Z]{2}")) && // Skip state codes
+            !part.equals("India", ignoreCase = true) && // Skip country
+            !part.matches(Regex(".*\\d+.*")) && // Skip parts with numbers (like Plus Codes)
+            !part.matches(Regex("Phase [IVX]+", RegexOption.IGNORE_CASE)) && // Skip Phase I, II, etc.
+            !part.matches(Regex("Lane \\d+", RegexOption.IGNORE_CASE)) && // Skip Lane numbers
+            !part.equals("Odisha", ignoreCase = true) && // Skip state names
+            !part.equals("Khandagiri", ignoreCase = true) && // Skip sub-areas
+            !part.equals("Kolathia", ignoreCase = true) // Skip areas
+        }
+        
+        // Return the first meaningful city candidate, or fallback
+        return cityCandidates.firstOrNull() ?: "Location"
     }
 
     private fun updateDateChipText(chip: Chip, calendar: java.util.Calendar) {
@@ -372,12 +483,43 @@ class EditEntryActivity : AppCompatActivity() {
                 return null
             }
             
+            // Decode the image with reduced sample size to save memory
+            val options = android.graphics.BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream.close()
+            
+            // Calculate sample size to reduce memory usage and file size
+            val maxSize = 800 // Max dimension for diary images (reduced from original)
+            val sampleSize = Math.max(1, Math.min(
+                options.outWidth / maxSize,
+                options.outHeight / maxSize
+            ))
+            
+            // Decode with sample size
+            val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            
+            val inputStream2 = contentResolver.openInputStream(uri)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
+            inputStream2?.close()
+            
+            if (bitmap == null) {
+                return null
+            }
+            
+            // Compress and save the image
             val file = java.io.File(filesDir, "image_${System.currentTimeMillis()}.jpg")
             val outputStream = java.io.FileOutputStream(file)
-            inputStream.copyTo(outputStream)
-            inputStream.close()
-            outputStream.close()
             
+            // Compress with 70% quality (good balance between quality and size)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, outputStream)
+            outputStream.close()
+            bitmap.recycle() // Free memory
+            
+            Log.d("IMAGE_OPTIMIZATION", "Saved optimized diary image: ${file.absolutePath}, Size: ${file.length()} bytes")
             file.absolutePath
         } catch (e: Exception) {
             e.printStackTrace()
@@ -695,6 +837,13 @@ class EditEntryActivity : AppCompatActivity() {
 
 
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == SCREEN_TIME_REQUEST_CODE && resultCode == RESULT_OK) {
+            Toast.makeText(this, "Screen time saved successfully", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -729,4 +878,14 @@ class EditEntryActivity : AppCompatActivity() {
         androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
+
+    private fun openScreenTimeInput() {
+        val intent = Intent(this, HealthDataInputActivity::class.java)
+        intent.putExtra("date", LocalDate.ofEpochDay(entryDate / (24 * 60 * 60 * 1000)).toString())
+        startActivityForResult(intent, SCREEN_TIME_REQUEST_CODE)
+    }
+
+    companion object {
+        private const val SCREEN_TIME_REQUEST_CODE = 1001
+    }
 } 

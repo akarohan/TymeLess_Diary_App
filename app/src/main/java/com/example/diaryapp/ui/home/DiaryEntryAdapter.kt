@@ -16,6 +16,8 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 class DiaryEntryAdapter(
     var entries: List<DiaryEntry>,
@@ -42,7 +44,9 @@ class DiaryEntryAdapter(
         private val titleText: TextView = itemView.findViewById(R.id.entryTitle)
         private val dateText: TextView = itemView.findViewById(R.id.entryDate)
         private val previewText: TextView = itemView.findViewById(R.id.entryPreview)
-        private val moodEmoji: TextView = itemView.findViewById(R.id.moodEmoji)
+        private val locationChipText: TextView = itemView.findViewById(R.id.locationChipText)
+        private val locationChipIcon: ImageView = itemView.findViewById(R.id.locationChipIcon)
+
         private val imageLeft: ImageView = itemView.findViewById(R.id.imageLeft)
         private val imageTopRight: ImageView = itemView.findViewById(R.id.imageTopRight)
         private val imageBottomRight: ImageView = itemView.findViewById(R.id.imageBottomRight)
@@ -50,6 +54,7 @@ class DiaryEntryAdapter(
         private val deleteButton: ImageView = itemView.findViewById(R.id.deleteButton)
         private val imagesRow: View = itemView.findViewById(R.id.imagesRow)
         private val audioIndicator: ImageView = itemView.findViewById(R.id.audioIndicator)
+        private val locationChipContainer: View = itemView.findViewById(R.id.locationChipContainer)
         private var currentEntry: DiaryEntry? = null
 
         init {
@@ -63,19 +68,15 @@ class DiaryEntryAdapter(
 
         fun bind(entry: DiaryEntry) {
             currentEntry = entry
+            
+            // Apply theme-aware colors
+            applyThemeColors()
+            
             titleText.text = entry.title ?: "(No Title)"
             val sdf = SimpleDateFormat("d MMMM yyyy", Locale.getDefault())
             dateText.text = sdf.format(Date(entry.date))
             
-            // Set mood emoji based on entry mood - handle both old and new systems
-            val mood = entry.mood
-            val moodEmojiText = when {
-                mood <= 1 -> if (mood == 0) "😢" else "😊" // New 2-value system
-                mood <= 5 -> "😢" // Old system: 0-5 = sad
-                else -> "😊" // Old system: 6-10 = happy
-            }
-            moodEmoji.text = moodEmojiText
-            moodEmoji.visibility = View.VISIBLE
+
             
             // Show a styled preview using Html.fromHtml, let TextView handle ellipsis
             val spanned = android.text.Html.fromHtml(entry.htmlContent, android.text.Html.FROM_HTML_MODE_LEGACY)
@@ -362,6 +363,93 @@ class DiaryEntryAdapter(
             } else {
                 audioIndicator.visibility = View.GONE
             }
+
+            // Location indicator logic: show location icon if there are coordinates
+            if (entry.latitude != null && entry.longitude != null) {
+                locationChipContainer.visibility = View.VISIBLE
+                
+                // Extract city name from location data
+                val cityName = if (entry.address != null) {
+                    extractCityFromAddress(entry.address)
+                } else if (entry.locationName != null && entry.locationName != "Current Location") {
+                    extractCityFromAddress(entry.locationName)
+                } else {
+                    "Location"
+                }
+                locationChipText.text = cityName
+            } else {
+                locationChipContainer.visibility = View.GONE
+            }
+        }
+        
+        private fun applyThemeColors() {
+            val context = itemView.context
+            val isNightMode = context.resources.configuration.uiMode and 
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK == 
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            
+            // Get the card view
+            val cardView = itemView as androidx.cardview.widget.CardView
+            
+            if (isNightMode) {
+                // Dark theme colors
+                cardView.setCardBackgroundColor(context.getColor(R.color.card_light_gray))
+                titleText.setTextColor(context.getColor(R.color.card_title_color))
+                previewText.setTextColor(context.getColor(R.color.card_preview_color))
+                dateText.setTextColor(context.getColor(R.color.chip_text_color))
+                deleteButton.setColorFilter(context.getColor(R.color.card_text_color))
+                audioIndicator.setColorFilter(context.getColor(R.color.card_text_color))
+                
+                // Set chip backgrounds and text colors for night mode
+                dateText.setBackgroundResource(R.drawable.bg_date_pill_night)
+                locationChipText.setTextColor(context.getColor(R.color.chip_text_color))
+                locationChipContainer.setBackgroundResource(R.drawable.bg_location_pill_night)
+                locationChipIcon.setColorFilter(context.getColor(R.color.chip_text_color))
+            } else {
+                // Light theme colors
+                cardView.setCardBackgroundColor(context.getColor(R.color.card_light_gray))
+                titleText.setTextColor(context.getColor(R.color.card_title_color))
+                previewText.setTextColor(context.getColor(R.color.card_preview_color))
+                dateText.setTextColor(context.getColor(R.color.chip_text_color))
+                deleteButton.setColorFilter(context.getColor(R.color.card_text_color))
+                audioIndicator.setColorFilter(context.getColor(R.color.card_text_color))
+                
+                // Set chip backgrounds and text colors for day mode
+                dateText.setBackgroundResource(R.drawable.bg_date_pill_day)
+                locationChipText.setTextColor(context.getColor(R.color.chip_text_color))
+                locationChipContainer.setBackgroundResource(R.drawable.bg_location_pill_day)
+                locationChipIcon.setColorFilter(context.getColor(R.color.chip_text_color))
+            }
+        }
+        
+        private fun extractCityFromAddress(address: String?): String {
+            if (address.isNullOrEmpty()) return "Location"
+            
+            // Split address by commas and look for city
+            val parts = address.split(",").map { it.trim() }
+            
+            // For Indian addresses: typically format is "Street, Area, City, State PIN, Country"
+            // We want to find the city which is usually the 3rd or 4th part from the end
+            // Skip the last parts (Country, State+PIN) and look for the city
+            
+            // Filter out parts that are likely not cities
+            val cityCandidates = parts.filter { part ->
+                part.isNotEmpty() && 
+                part.length > 2 && 
+                part.length <= 20 &&
+                !part.matches(Regex("\\d{5,6}")) && // Skip postal codes
+                !part.matches(Regex("\\d+\\s*[A-Z]{2}")) && // Skip state codes
+                !part.equals("India", ignoreCase = true) && // Skip country
+                !part.matches(Regex(".*\\d+.*")) && // Skip parts with numbers (like Plus Codes)
+                !part.matches(Regex("Phase [IVX]+", RegexOption.IGNORE_CASE)) && // Skip Phase I, II, etc.
+                !part.matches(Regex("Lane \\d+", RegexOption.IGNORE_CASE)) && // Skip Lane numbers
+                !part.equals("Odisha", ignoreCase = true) && // Skip state names
+                !part.equals("Khandagiri", ignoreCase = true) && // Skip sub-areas
+                !part.equals("Kolathia", ignoreCase = true) // Skip areas
+            }
+            
+            // Return the first meaningful city candidate, or fallback
+            return cityCandidates.firstOrNull() ?: "Location"
         }
     }
 } 

@@ -1,55 +1,40 @@
+import java.util.Properties
+import java.io.FileInputStream
+import java.io.FileOutputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("org.jetbrains.kotlin.kapt") // Not in version catalog; add manually
 }
 
-import java.util.Properties
 
-val versionPropsFile = file("version.properties")
 
-// Version auto-increment logic
-
-tasks.register("bumpVersion") {
-    doLast {
-        val props = Properties().apply {
-            if (versionPropsFile.exists()) {
-                versionPropsFile.inputStream().use { load(it) }
-            }
-        }
-        var major = (props["major"] as String?)?.toIntOrNull() ?: 2
-        var minor = (props["minor"] as String?)?.toIntOrNull() ?: 6
-        var patch = (props["patch"] as String?)?.toIntOrNull() ?: 2
-
-        patch++
-        if (patch > 100) {
-            patch = 1
-            minor++
-        }
-        if (minor > 9) {
-            minor = 0
-            major++
-        }
-        props["major"] = major.toString()
-        props["minor"] = minor.toString()
-        props["patch"] = patch.toString()
-        versionPropsFile.outputStream().use { props.store(it, null) }
-        println("Version bumped to $major.$minor.$patch")
-    }
+// Load version properties
+val versionProperties = Properties()
+val versionPropertiesFile = rootProject.file("app/version.properties")
+if (versionPropertiesFile.exists()) {
+    versionProperties.load(FileInputStream(versionPropertiesFile))
 }
 
-tasks.named("preBuild").configure {
-    dependsOn("bumpVersion")
+var major = versionProperties.getProperty("major", "4").toInt()
+var minor = versionProperties.getProperty("minor", "7").toInt()
+var patch = versionProperties.getProperty("patch", "0").toInt()
+
+// Increment patch version
+patch++
+
+// If patch reaches 100, increment minor and reset patch
+if (patch >= 100) {
+    minor++
+    patch = 0
 }
 
-val versionProps = Properties().apply {
-    if (versionPropsFile.exists()) {
-        versionPropsFile.inputStream().use { load(it) }
-    }
-}
-val major = (versionProps["major"] as String?)?.toIntOrNull() ?: 2
-val minor = (versionProps["minor"] as String?)?.toIntOrNull() ?: 6
-val patch = (versionProps["patch"] as String?)?.toIntOrNull() ?: 2
+// Update version.properties file
+versionProperties.setProperty("major", major.toString())
+versionProperties.setProperty("minor", minor.toString())
+versionProperties.setProperty("patch", patch.toString())
+versionProperties.store(FileOutputStream(versionPropertiesFile), null)
 
 android {
     namespace = "com.example.diaryapp"
@@ -59,8 +44,8 @@ android {
         applicationId = "com.example.diaryapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = major * 10000 + minor * 100 + patch
-        versionName = "$major.$minor.$patch"
+        versionCode = 1
+        versionName = "${major}.${minor}.${patch}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -87,6 +72,21 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
+    }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/license.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/notice.txt"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/*.kotlin_module"
+        }
     }
 }
 
@@ -130,6 +130,17 @@ dependencies {
     implementation("jp.wasabeef:blurry:4.0.1")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     
+    // Google Drive API - Simplified versions
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
+    implementation("com.google.api-client:google-api-client-android:2.0.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
+    implementation("com.google.http-client:google-http-client-android:1.42.3")
+    
     // ViewPager2 for image viewer
     implementation("androidx.viewpager2:viewpager2:1.0.0")
+    
+    // Google Maps and Location Services
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
+
 }

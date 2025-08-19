@@ -2,7 +2,7 @@
 <resources>
     <color name="text">#000000</color>
     <color name="greyback">#F5F5F5</color>
-    <color name="button_bg">#222222</color>
+    <color name="button_bg">#000000</color>
     <color name="button_text">#FFFFFF</color>
     <color name="underline">#000000</color>
     <!-- Existing colors -->
@@ -25,5 +25,19 @@
     <color name="skyblue_note_card">#29B6F6</color>
     <color name="light_gray">#CCCCCC</color>
     <color name="dark_gray">#666666</color>
+    <color name="health_connect_highlight">#4CAF50</color>
+    <color name="green">#4CAF50</color>
+    <!-- Light mode card colors -->
+    <color name="card_text_color">#000000</color>
+    <color name="card_title_color">#000000</color>
+    <color name="card_preview_color">#000000</color>
+    <!-- Light mode chip colors -->
+    <color name="chip_text_color">#FFFFFF</color>
+    <color name="chip_text_color_night">#000000</color>
+    <!-- Light mode backup colors -->
+    <color name="backup_card_bg">#E0E0E0</color>
+    <color name="backup_button_bg">#000000</color>
+    <color name="backup_button_text">#FFFFFF</color>
+    <color name="backup_text_color">#000000</color>
     <!-- Add any other existing colors below -->
 </resources>

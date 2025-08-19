@@ -203,25 +203,70 @@ class SettingsActivity : AppCompatActivity() {
     
     private fun handleImageSelection(uri: Uri) {
         try {
-            // Save the image to internal storage
-            val file = File(filesDir, "profile_pic.jpg")
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                FileOutputStream(file).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
+            // Optimize the image before saving
+            val optimizedUri = compressProfileImage(uri)
+            if (optimizedUri != null) {
+                // Save the file path in preferences
+                val prefs = getEncryptedPrefs()
+                prefs.edit().putString("profile_pic_uri", optimizedUri).apply()
+                
+                // Load the image into the profile image view
+                loadProfileImage()
+                
+                Toast.makeText(this, "Profile picture updated!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
             }
-            
-            // Save the file path in preferences
-            val prefs = getEncryptedPrefs()
-            prefs.edit().putString("profile_pic_uri", file.absolutePath).apply()
-            
-            // Load the image into the profile image view
-            loadProfileImage()
-            
-            Toast.makeText(this, "Profile picture updated!", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e("SettingsActivity", "Error saving profile image", e)
             Toast.makeText(this, "Failed to update profile picture", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun compressProfileImage(uri: Uri): String? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri)
+            if (inputStream == null) return null
+            
+            // Decode bounds first
+            val options = android.graphics.BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream.close()
+            
+            // Calculate sample size for profile images (max 512px)
+            val maxSize = 512
+            val sampleSize = Math.max(1, Math.min(
+                options.outWidth / maxSize,
+                options.outHeight / maxSize
+            ))
+            
+            // Decode with sample size
+            val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            
+            val inputStream2 = contentResolver.openInputStream(uri)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
+            inputStream2?.close()
+            
+            if (bitmap == null) return null
+            
+            // Save compressed profile image
+            val file = File(filesDir, "profile_pic.jpg")
+            val outputStream = FileOutputStream(file)
+            
+            // Compress with 80% quality for profile images
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+            outputStream.close()
+            bitmap.recycle()
+            
+            Log.d("IMAGE_OPTIMIZATION", "Compressed profile image: ${file.absolutePath}, Size: ${file.length()} bytes")
+            file.absolutePath
+        } catch (e: Exception) {
+            Log.e("IMAGE_OPTIMIZATION", "Failed to compress profile image", e)
+            null
         }
     }
     

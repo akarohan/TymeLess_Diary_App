@@ -338,9 +338,11 @@ class ThemePictureSelectionActivity : AppCompatActivity() {
                 val dayFile = File(filesDir, "theme_header_pic_day.jpg")
                 if (dayBitmap != null) {
                     FileOutputStream(dayFile).use { outputStream ->
-                        dayBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+                        // Reduced quality from 90% to 75% for better compression
+                        dayBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, outputStream)
                         outputStream.flush()
                     }
+                    dayBitmap.recycle() // Free memory
                 }
                 
                 // Save night version
@@ -348,9 +350,11 @@ class ThemePictureSelectionActivity : AppCompatActivity() {
                 val nightFile = File(filesDir, "theme_header_pic_night.jpg")
                 if (nightBitmap != null) {
                     FileOutputStream(nightFile).use { outputStream ->
-                        nightBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+                        // Reduced quality from 90% to 75% for better compression
+                        nightBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, outputStream)
                         outputStream.flush()
                     }
+                    nightBitmap.recycle() // Free memory
                 }
                 
                 // Copy the appropriate version based on current mode
@@ -576,23 +580,18 @@ class ThemePictureSelectionActivity : AppCompatActivity() {
     
     private fun saveCustomDayImage(uri: Uri) {
         try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val file = File(filesDir, "custom_day_image.jpg")
-            val outputStream = FileOutputStream(file)
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
-            outputStream.close()
-            
-            prefs.edit().putString("custom_day_image_uri", file.absolutePath).apply()
-            Log.d("ApplyButton", "Day image saved to: ${file.absolutePath}")
-            updateCustomPreviews()
-            
-            // Add a small delay to ensure file operations complete
-            dayPreviewImageView.post {
-                checkApplyButtonState()
+            // Optimize image before saving
+            val optimizedUri = compressImage(uri, "custom_day_image.jpg")
+            if (optimizedUri != null) {
+                prefs.edit().putString("custom_day_image_uri", optimizedUri).apply()
+                Log.d("ApplyButton", "Optimized day image saved to: $optimizedUri")
+                updateCustomPreviews()
+                
+                // Add a small delay to ensure file operations complete
+                dayPreviewImageView.post {
+                    checkApplyButtonState()
+                }
             }
-            
-
         } catch (e: Exception) {
             Log.e("CustomImage", "Failed to save day image", e)
         }
@@ -600,23 +599,18 @@ class ThemePictureSelectionActivity : AppCompatActivity() {
     
     private fun saveCustomNightImage(uri: Uri) {
         try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val file = File(filesDir, "custom_night_image.jpg")
-            val outputStream = FileOutputStream(file)
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
-            outputStream.close()
-            
-            prefs.edit().putString("custom_night_image_uri", file.absolutePath).apply()
-            Log.d("ApplyButton", "Night image saved to: ${file.absolutePath}")
-            updateCustomPreviews()
-            
-            // Add a small delay to ensure file operations complete
-            nightPreviewImageView.post {
-                checkApplyButtonState()
+            // Optimize image before saving
+            val optimizedUri = compressImage(uri, "custom_night_image.jpg")
+            if (optimizedUri != null) {
+                prefs.edit().putString("custom_night_image_uri", optimizedUri).apply()
+                Log.d("ApplyButton", "Optimized night image saved to: $optimizedUri")
+                updateCustomPreviews()
+                
+                // Add a small delay to ensure file operations complete
+                nightPreviewImageView.post {
+                    checkApplyButtonState()
+                }
             }
-            
-
         } catch (e: Exception) {
             Log.e("CustomImage", "Failed to save night image", e)
         }
@@ -624,37 +618,79 @@ class ThemePictureSelectionActivity : AppCompatActivity() {
     
     private fun saveCustomThemeImage(uri: Uri) {
         try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val file = File(filesDir, "custom_theme_image.jpg")
-            val outputStream = FileOutputStream(file)
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
-            outputStream.close()
-            
-            prefs.edit().putString("custom_theme_image_uri", file.absolutePath).apply()
-            Log.d("ApplyButton", "Custom theme image saved to: ${file.absolutePath}")
-            
-            // Force update the preview and button state
-            runOnUiThread {
-                // Clear any existing previews first
-                dayPreviewImageView.setImageDrawable(null)
-                nightPreviewImageView.setImageDrawable(null)
+            // Optimize image before saving
+            val optimizedUri = compressImage(uri, "custom_theme_image.jpg")
+            if (optimizedUri != null) {
+                prefs.edit().putString("custom_theme_image_uri", optimizedUri).apply()
+                Log.d("ApplyButton", "Optimized custom theme image saved to: $optimizedUri")
                 
-                // Update previews
-                updateCustomThemePreview()
-                checkApplyButtonState()
-                
-                // Ensure custom theme is selected
-                if (selectedThemeIndex < 0) {
-                    selectedThemeIndex = allThemes.indexOfFirst { it.isCustom }
+                // Force update the preview and button state
+                runOnUiThread {
+                    // Clear any existing previews first
+                    dayPreviewImageView.setImageDrawable(null)
+                    nightPreviewImageView.setImageDrawable(null)
+                    
+                    // Update previews
+                    updateCustomThemePreview()
+                    checkApplyButtonState()
+                    
+                    // Ensure custom theme is selected
+                    if (selectedThemeIndex < 0) {
+                        selectedThemeIndex = allThemes.indexOfFirst { it.isCustom }
+                    }
+                    
+                    Log.d("ApplyButton", "Custom theme image saved and preview updated")
                 }
-                
-                Log.d("ApplyButton", "Custom theme image saved and preview updated")
             }
-            
-
         } catch (e: Exception) {
             Log.e("CustomImage", "Failed to save custom theme image", e)
+        }
+    }
+    
+    private fun compressImage(uri: Uri, fileName: String): String? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri)
+            if (inputStream == null) return null
+            
+            // Decode with bounds check
+            val options = android.graphics.BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream.close()
+            
+            // Calculate sample size for theme images (max 1200px for good quality)
+            val maxSize = 1200
+            val sampleSize = Math.max(1, Math.min(
+                options.outWidth / maxSize,
+                options.outHeight / maxSize
+            ))
+            
+            // Decode with sample size
+            val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+            
+            val inputStream2 = contentResolver.openInputStream(uri)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
+            inputStream2?.close()
+            
+            if (bitmap == null) return null
+            
+            // Save compressed image
+            val file = File(filesDir, fileName)
+            val outputStream = FileOutputStream(file)
+            
+            // Use 75% quality for good balance
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, outputStream)
+            outputStream.close()
+            bitmap.recycle()
+            
+            Log.d("IMAGE_OPTIMIZATION", "Compressed theme image: ${file.absolutePath}, Size: ${file.length()} bytes")
+            file.absolutePath
+        } catch (e: Exception) {
+            Log.e("IMAGE_OPTIMIZATION", "Failed to compress image", e)
+            null
         }
     }
     

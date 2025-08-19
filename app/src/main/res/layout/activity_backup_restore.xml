@@ -54,292 +54,459 @@
 
     </LinearLayout>
 
-    <!-- Backup Icon -->
-    <ImageView
-        android:id="@+id/backup_icon"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:src="@drawable/ic_backup"
-        android:background="@drawable/circle_background"
-        android:padding="16dp"
-        android:tint="?android:textColorPrimary"
+    <!-- ScrollView for content -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
+        app:layout_constraintBottom_toTopOf="@id/button_container"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <!-- Backup Information -->
-    <TextView
-        android:id="@+id/text_last_backup_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Last Backup:"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/backup_icon"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="20dp"
-        android:layout_marginStart="24dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp">
 
-    <TextView
-        android:id="@+id/text_last_backup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="--"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toTopOf="@id/text_last_backup_label"
-        app:layout_constraintStart_toEndOf="@id/text_last_backup_label"
-        android:layout_marginStart="8dp" />
 
-    <TextView
-        android:id="@+id/text_backup_path_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Backup Folder:"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_last_backup_label"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="8dp"
-        android:layout_marginStart="24dp" />
 
-    <TextView
-        android:id="@+id/text_backup_path"
+
+
+            <!-- Local Storage Section -->
+            <LinearLayout
+                android:id="@+id/localStorageCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/rounded_gray_box"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Local Storage"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/backup_text_color"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Local Storage Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Local Storage"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_local_storage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <!-- Automatic Backup Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Automatic Backup"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_automatic_backup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <!-- Last Backup Info -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Last Backup:"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/backup_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_last_backup"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="--"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Backup Folder Info -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Location:"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/backup_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_backup_path"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="--"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Local Storage Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_backup"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/backup_button_bg"
+                        android:textColor="@color/backup_button_text"
+                        android:text="BACK UP"
+                        android:textSize="10sp"
+                        android:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_choose_folder"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/backup_button_bg"
+                        android:textColor="@color/backup_button_text"
+                        android:text="CHOOSE FOLDER"
+                        android:textSize="10sp"
+                        android:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_restore"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/backup_button_bg"
+                        android:textColor="@color/backup_button_text"
+                        android:text="RESTORE"
+                        android:textSize="10sp"
+                        android:visibility="visible" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Google Drive Section -->
+            <LinearLayout
+                android:id="@+id/googleDriveCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/rounded_gray_box"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Google Drive"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/backup_text_color"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Google Drive Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Google Drive"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_google_drive"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <!-- Google Drive Status -->
+                <TextView
+                    android:id="@+id/text_google_drive_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Connected to Google Drive"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/holo_green_dark"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Google Account Info -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Google Account:"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/backup_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_google_account"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="rohan.mahapatra1507@gmail.com"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Google Drive Last Backup -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Last Backup:"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/backup_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_google_last_backup"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="12 Aug 2025, 21:17"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Google Drive Location -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Location:"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/backup_text_color" />
+
+                    <TextView
+                        android:id="@+id/text_google_backup_location"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Google Drive/DiaryApp_Backups"
+                        android:textSize="16sp"
+                        android:textColor="@color/backup_text_color"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Google Drive Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_google_backup"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:backgroundTint="@color/backup_button_bg"
+                        android:textColor="@color/backup_button_text"
+                        android:text="Back Up"
+                        android:textSize="10sp"
+                        android:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_google_restore"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/backup_button_bg"
+                        android:textColor="@color/backup_button_text"
+                        android:text="Restore"
+                        android:textSize="10sp"
+                        android:visibility="visible" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Progress and Status -->
+            <TextView
+                android:id="@+id/text_backup_complete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Backup Complete"
+                android:textSize="16sp"
+                android:textColor="@android:color/holo_green_dark"
+                android:visibility="gone"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp" />
+
+            <TextView
+                android:id="@+id/text_restore_complete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Restore Complete"
+                android:textSize="16sp"
+                android:textColor="@android:color/holo_green_dark"
+                android:visibility="gone"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp" />
+
+            <ProgressBar
+                android:id="@+id/progress_backup"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:progressDrawable="@drawable/progress_bar_green"
+                android:visibility="gone"
+                android:max="100"
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Progress Size Info -->
+            <LinearLayout
+                android:id="@+id/progress_size_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:layout_marginStart="24dp"
+                android:layout_marginEnd="24dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/text_uploaded_size"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0 MB"
+                    android:textSize="12sp"
+                    android:textColor="?android:textColorSecondary"
+                    android:gravity="start" />
+
+                <TextView
+                    android:id="@+id/text_total_size"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="0 MB"
+                    android:textSize="12sp"
+                    android:textColor="?android:textColorSecondary"
+                    android:gravity="end" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Button Container at Bottom -->
+    <LinearLayout
+        android:id="@+id/button_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="--"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        android:maxLines="3"
-        android:ellipsize="end"
-        app:layout_constraintTop_toTopOf="@id/text_backup_path_label"
-        app:layout_constraintStart_toEndOf="@id/text_backup_path_label"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Backup Options Section -->
-    <TextView
-        android:id="@+id/text_backup_options_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="What do you want to Backup?"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_backup_path"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="24dp" />
-
-    <!-- Images Option -->
-    <TextView
-        android:id="@+id/text_images"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Images"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_backup_options_title"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="24dp" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_images"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        app:layout_constraintTop_toTopOf="@id/text_images"
-        app:layout_constraintBottom_toBottomOf="@id/text_images"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Audio Option -->
-    <TextView
-        android:id="@+id/text_audio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Audio"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_images"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_audio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        app:layout_constraintTop_toTopOf="@id/text_audio"
-        app:layout_constraintBottom_toBottomOf="@id/text_audio"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Diary Option -->
-    <TextView
-        android:id="@+id/text_diary_notes"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Diary"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_audio"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_diary_notes"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        app:layout_constraintTop_toTopOf="@id/text_diary_notes"
-        app:layout_constraintBottom_toBottomOf="@id/text_diary_notes"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Notes Option -->
-    <TextView
-        android:id="@+id/text_notes"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Notes"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_diary_notes"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_notes"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        app:layout_constraintTop_toTopOf="@id/text_notes"
-        app:layout_constraintBottom_toBottomOf="@id/text_notes"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Profile Settings Option -->
-    <TextView
-        android:id="@+id/text_profile_settings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Profile Settings"
-        android:textSize="16sp"
-        android:textColor="@color/text"
-        app:layout_constraintTop_toBottomOf="@id/text_notes"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="24dp" />
-
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_profile_settings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        app:layout_constraintTop_toTopOf="@id/text_profile_settings"
-        app:layout_constraintBottom_toBottomOf="@id/text_profile_settings"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp" />
-
-    <!-- Progress and Status -->
-    <TextView
-        android:id="@+id/text_backup_complete"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Backup Complete"
-        android:textSize="16sp"
-        android:textColor="@android:color/holo_green_dark"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/switch_profile_settings"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp" />
-
-    <TextView
-        android:id="@+id/text_restore_complete"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Restore Complete"
-        android:textSize="16sp"
-        android:textColor="@android:color/holo_green_dark"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/switch_profile_settings"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp" />
-
-    <ProgressBar
-        android:id="@+id/progress_backup"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="0dp"
-        android:layout_height="4dp"
-        android:progressDrawable="@drawable/progress_bar_green"
-        android:visibility="gone"
-        android:max="100"
-        app:layout_constraintTop_toBottomOf="@id/text_profile_settings"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/button_restore" />
-
-    <!-- Action Buttons -->
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_restore"
-        android:layout_width="0dp"
-        android:layout_height="50dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="@color/button_bg"
-        android:textColor="@color/button_text"
-        android:text="Restore"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toTopOf="@id/button_choose_folder"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_choose_folder"
-        android:layout_width="0dp"
-        android:layout_height="50dp"
-        android:text="Choose Backup Folder"
-        android:textSize="16sp"
-        android:textColor="@color/button_text"
-        android:backgroundTint="@color/button_bg"
-        app:layout_constraintBottom_toTopOf="@id/button_backup"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="16dp" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_backup"
-        android:layout_width="0dp"
-        android:layout_height="50dp"
-        android:text="Backup"
-        android:textSize="16sp"
-        android:textColor="@color/button_text"
-        android:backgroundTint="@color/button_bg"
+        android:orientation="vertical"
+        android:background="?android:windowBackground"
+        android:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="32dp" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_google_signin"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="@color/backup_button_bg"
+            android:textColor="@color/backup_button_text"
+            android:text="Sign in to Google Drive"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

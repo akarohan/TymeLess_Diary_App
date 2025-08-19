@@ -130,8 +130,10 @@
             android:text="Title"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:textColor="@color/black"
+            android:textColor="@color/card_title_color"
             android:layout_marginTop="4dp"/>
+
+
 
         <!-- Main Text -->
         <TextView
@@ -139,7 +141,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="@color/black"
+            android:textColor="@color/card_preview_color"
             android:layout_marginTop="1dp"
             android:layout_marginBottom="5dp"
             android:maxLines="2"
@@ -152,40 +154,74 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="6dp">
+            android:layout_marginTop="6dp"
+            android:baselineAligned="false">
 
-            <!-- Date pill -->
-            <TextView
-                android:id="@+id/entryDate"
+            <!-- Left side elements -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_date_pill"
-                android:textColor="@color/edit_hint_color"
-                android:paddingLeft="11dp"
-                android:paddingRight="11dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:textSize="9sp"
-                android:text="Thu, Sep 20"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <!-- Mood emoji -->
-            <TextView
-                android:id="@+id/moodEmoji"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:layout_marginStart="5dp"
-                android:visibility="gone"/>
+                <!-- Date pill -->
+                <TextView
+                    android:id="@+id/entryDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_date_pill"
+                    android:textColor="@color/edit_hint_color"
+                    android:paddingLeft="11dp"
+                    android:paddingRight="11dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:textSize="9sp"
+                    android:text="Thu, Sep 20"/>
 
-            <!-- Audio indicator -->
-            <ImageView
-                android:id="@+id/audioIndicator"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_mic_filled"
-                android:layout_marginStart="5dp"
-                android:visibility="gone"
-                android:contentDescription="Audio indicator"/>
+                <!-- Location chip -->
+                <LinearLayout
+                    android:id="@+id/locationChipContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:background="@drawable/bg_location_pill"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="11dp"
+                    android:paddingRight="11dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/locationChipIcon"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:src="@drawable/ic_location_on"
+                        android:layout_marginEnd="4dp"
+                        android:contentDescription="Location icon"/>
+
+                    <TextView
+                        android:id="@+id/locationChipText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/chip_text_color"
+                        android:textSize="9sp"
+                        android:text="Location"/>
+
+                </LinearLayout>
+
+
+                <!-- Audio indicator -->
+                <ImageView
+                    android:id="@+id/audioIndicator"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_mic_filled"
+                    android:layout_marginStart="5dp"
+                    android:visibility="gone"
+                    android:contentDescription="Audio indicator"/>
+            </LinearLayout>
 
             <View
                 android:layout_width="0dp"

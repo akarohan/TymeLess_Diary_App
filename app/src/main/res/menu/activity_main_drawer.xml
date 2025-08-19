@@ -15,6 +15,11 @@
             android:title="Account Settings" />
         
         <item
+            android:id="@+id/nav_health_connect"
+            android:icon="@drawable/ic_health_connect"
+            android:title="Health Connect" />
+        
+        <item
             android:id="@+id/nav_customize_login"
             android:icon="@drawable/ic_pen_black"
             android:title="Customise Login Page" />

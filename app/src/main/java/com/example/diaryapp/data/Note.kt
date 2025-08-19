@@ -13,5 +13,9 @@ data class Note(
     val audioList: List<AudioItem> = emptyList(),
     val thumbnailPath: String? = null, // Path to thumbnail image
     val noteType: String = "N", // "N" for green, "P" for red, "A" for sky blue
-    val deletedAt: Long? = null // Timestamp in millis when deleted, null if not deleted
+    val deletedAt: Long? = null, // Timestamp in millis when deleted, null if not deleted
+    val latitude: Double? = null, // Location latitude
+    val longitude: Double? = null, // Location longitude
+    val locationName: String? = null, // Custom location name
+    val address: String? = null // Full address
 ) 

@@ -77,6 +77,39 @@
 
         </LinearLayout>
 
+        <!-- Health Connect -->
+        <LinearLayout
+            android:id="@+id/nav_health_connect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:id="@+id/nav_health_connect_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_health_connect"
+                android:layout_marginEnd="16dp"
+                android:tint="?android:textColorPrimary"/>
+
+            <TextView
+                android:id="@+id/nav_health_connect_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Health Connect"
+                android:textSize="16sp"
+                android:textColor="?android:textColorPrimary"/>
+
+        </LinearLayout>
+
+
+
+
+
         <!-- Customise Login Page -->
         <LinearLayout
             android:id="@+id/nav_customize_login"
@@ -195,35 +228,9 @@
 
         </LinearLayout>
 
-        <!-- Version Updates -->
-        <LinearLayout
-            android:id="@+id/nav_version_updates"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical"
-            android:clickable="true"
-            android:focusable="true">
 
-            <ImageView
-                android:id="@+id/nav_version_updates_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_refresh"
-                android:layout_marginEnd="16dp"
-                android:tint="?android:textColorPrimary"/>
 
-            <TextView
-                android:id="@+id/nav_version_updates_text"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Version Updates"
-                android:textSize="16sp"
-                android:textColor="?android:textColorPrimary"/>
 
-        </LinearLayout>
 
         <!-- Log Out -->
         <LinearLayout
@@ -254,6 +261,8 @@
 
         </LinearLayout>
 
+
+
     </LinearLayout>
 
     <!-- Footer -->
@@ -270,7 +279,7 @@
             android:id="@+id/navAppVersion"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Version 3.6.12"
+                         android:text="Version 4.7.0"
             android:textSize="14sp"
             android:textColor="?android:textColorPrimary"
             android:layout_marginBottom="4dp"/>

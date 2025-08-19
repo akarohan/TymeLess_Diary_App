@@ -201,6 +201,9 @@ class EditNoteActivity : AppCompatActivity() {
                         
                         // Refresh widget
                         NotesWidgetProvider.refreshWidgets(this@EditNoteActivity)
+                        
+                        // Trigger automatic backup after successful save
+                        BackupRestoreActivity.performAutomaticBackup(this@EditNoteActivity)
                     } catch (e: Exception) {
                         Log.e("SAVE_DEBUG", "Error saving note", e)
                     }

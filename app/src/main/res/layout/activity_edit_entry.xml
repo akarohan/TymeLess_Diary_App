@@ -319,9 +319,33 @@
                     android:layout_width="0dp"
                     android:layout_height="36dp"
                     android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
                     android:background="@android:color/transparent"
                     android:src="@drawable/ic_mic_filled"
                     android:contentDescription="Record audio"
+                    android:padding="6dp"
+                    android:scaleType="centerInside"/>
+
+                <ImageButton
+                    android:id="@+id/btnScreenTime"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_health_connect"
+                    android:contentDescription="Add health data"
+                    android:padding="6dp"
+                    android:scaleType="centerInside"/>
+
+                <ImageButton
+                    android:id="@+id/btnLocation"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_location_on"
+                    android:contentDescription="Add location"
                     android:padding="6dp"
                     android:scaleType="centerInside"/>
 

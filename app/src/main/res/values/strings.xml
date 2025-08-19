@@ -13,4 +13,7 @@
     <string name="app_name">TymeLess</string>
     <string name="widget_notes_title">Quick Notes</string>
     <string name="widget_notes_no_notes">No notes yet</string>
+    
+    <!-- Google Maps API Key - Replace with your actual API key -->
+    <string name="google_maps_key">YOUR_GOOGLE_MAPS_API_KEY_HERE</string>
 </resources>

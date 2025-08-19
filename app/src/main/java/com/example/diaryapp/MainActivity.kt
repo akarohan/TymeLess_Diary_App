@@ -70,6 +70,7 @@ import android.graphics.drawable.GradientDrawable
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.content.Context
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 
 // Extension property for dp to px
 // Removed: val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
@@ -214,6 +215,9 @@ class MainActivity : AppCompatActivity() {
             updateNavDrawerColors(isNightMode)
             updateNavDrawerHeaderBackground(isNightMode)
         }
+        
+        // Initialize Health Connect debug helper
+        initializeHealthConnectDebug()
     }
 
     private fun setupFreshNavigationDrawer() {
@@ -267,15 +271,35 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, BackupRestoreActivity::class.java))
         }
         
+        // Add Health Connect test on long press of backup/restore button
+        findViewById<LinearLayout>(R.id.nav_backup_restore)?.setOnLongClickListener {
+            // Long press on backup/restore to test Health Connect
+            testHealthConnectWithGoogleDrive()
+            Toast.makeText(this, "Testing Health Connect with Google Drive...", Toast.LENGTH_SHORT).show()
+            true
+        }
+        
+        // Health Connect button
+        findViewById<LinearLayout>(R.id.nav_health_connect)?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.END)
+            HealthConnectActivity.start(this)
+        }
+        
+        // Screen Time Analytics button
+
+        
+
+        
+
+        
         findViewById<LinearLayout>(R.id.nav_recycle_bin)?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.END)
             startActivity(Intent(this, com.example.diaryapp.ui.home.RecycleBinActivity::class.java))
         }
         
-        findViewById<LinearLayout>(R.id.nav_version_updates)?.setOnClickListener {
-            drawerLayout.closeDrawer(GravityCompat.END)
-            startActivity(Intent(this, VersionUpdatesActivity::class.java))
-        }
+
+        
+
         
         findViewById<LinearLayout>(R.id.nav_logout)?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.END)
@@ -287,6 +311,8 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }
+        
+
         
         // Make version text non-interactive to prevent background interaction
         findViewById<TextView>(R.id.navAppVersion)?.setOnClickListener {
@@ -545,7 +571,8 @@ class MainActivity : AppCompatActivity() {
         val iconIds = listOf(
             R.id.nav_home_icon, R.id.nav_settings_icon, R.id.nav_customize_login_icon,
             R.id.nav_change_theme_pic_icon, R.id.nav_backup_restore_icon,
-            R.id.nav_recycle_bin_icon, R.id.nav_version_updates_icon, R.id.nav_logout_icon
+            R.id.nav_recycle_bin_icon, R.id.nav_logout_icon,
+                            R.id.nav_health_connect_icon
         )
         
         iconIds.forEach { iconId ->
@@ -562,8 +589,8 @@ class MainActivity : AppCompatActivity() {
         val textIds = listOf(
             R.id.nav_home_text, R.id.nav_settings_text, R.id.nav_customize_login_text,
             R.id.nav_change_theme_pic_text, R.id.nav_backup_restore_text,
-            R.id.nav_recycle_bin_text, R.id.nav_version_updates_text, R.id.nav_logout_text, 
-            R.id.navAppVersion, R.id.navBuiltBy
+            R.id.nav_recycle_bin_text, R.id.nav_logout_text,
+                            R.id.nav_health_connect_text, R.id.navAppVersion, R.id.navBuiltBy
         )
         
         textIds.forEach { textId ->
@@ -1088,6 +1115,91 @@ class MainActivity : AppCompatActivity() {
             }
         }
         registerReceiver(themeUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    }
+    
+    /**
+     * Initialize Health Connect debug helper to test data loading
+     */
+    private fun initializeHealthConnectDebug() {
+        lifecycleScope.launch {
+            try {
+                Log.d("MainActivity", "Initializing Health Connect debug helper")
+                
+                // Create debug helper
+                val debugHelper = HealthConnectDebugHelper(this@MainActivity)
+                
+                // Test date parsing first
+                debugHelper.testDateParsing()
+                
+                // Wait a bit for date parsing test to complete
+                kotlinx.coroutines.delay(1000)
+                
+                // Test Health Connect data loading (this will show detailed database structure)
+                // Note: This requires Google Drive service to be available
+                // For now, we'll test without it to see the database structure
+                debugHelper.testHealthConnectData(null)
+                
+                Log.d("MainActivity", "Health Connect debug helper initialized")
+                
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error initializing Health Connect debug helper", e)
+            }
+        }
+    }
+    
+    /**
+     * Test Health Connect with Google Drive service
+     * Call this when you want to test with real Google Drive access
+     */
+    fun testHealthConnectWithGoogleDrive() {
+        lifecycleScope.launch {
+            try {
+                Log.d("MainActivity", "=== STARTING HEALTH CONNECT TEST ===")
+                
+                val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                if (account != null) {
+                    Log.d("MainActivity", "Google account found: ${account.email}")
+                    
+                    val googleDriveService = GoogleDriveService(this@MainActivity)
+                    Log.d("MainActivity", "GoogleDriveService created")
+                    
+                    googleDriveService.initialize(account)
+                    Log.d("MainActivity", "GoogleDriveService initialized")
+                    
+                    val debugHelper = HealthConnectDebugHelper(this@MainActivity)
+                    Log.d("MainActivity", "HealthConnectDebugHelper created")
+                    
+                    debugHelper.testHealthConnectDataWithDrive(googleDriveService)
+                    Log.d("MainActivity", "Health Connect test started")
+                } else {
+                    Log.e("MainActivity", "No Google account found - user not signed in")
+                    Toast.makeText(this@MainActivity, "Please sign in to Google first", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in testHealthConnectWithGoogleDrive", e)
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    
+    /**
+     * Test current Health Connect state without Google Drive
+     * Call this to see what data is currently loaded
+     */
+    fun testCurrentHealthConnectState() {
+        lifecycleScope.launch {
+            try {
+                Log.d("MainActivity", "Testing current Health Connect state")
+                
+                // Create debug helper and test current state
+                val debugHelper = HealthConnectDebugHelper(this@MainActivity)
+                debugHelper.testCurrentHealthConnectState()
+                
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error testing current Health Connect state", e)
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     override fun onDestroy() {

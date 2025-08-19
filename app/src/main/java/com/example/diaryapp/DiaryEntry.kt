@@ -16,6 +16,10 @@ data class DiaryEntry(
     @TypeConverters(DiaryTypeConverters::class)
     val audioList: List<AudioItem> = emptyList(),
 
-    val mood: Int = 5, // Mood rating from -5 to 5, default neutral (5)
-    val deletedAt: Long? = null // Timestamp in millis when deleted, null if not deleted
+
+    val deletedAt: Long? = null, // Timestamp in millis when deleted, null if not deleted
+    val latitude: Double? = null, // Location latitude
+    val longitude: Double? = null, // Location longitude
+    val locationName: String? = null, // Custom location name
+    val address: String? = null // Full address
 ) 

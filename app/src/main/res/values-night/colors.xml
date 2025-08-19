@@ -14,5 +14,18 @@
     <color name="edit_text_color">#FFFFFF</color>
     <color name="edit_hint_color">#AAAAAA</color>
     <color name="hint">#AAAAAA</color>
+    <!-- Dark mode card colors -->
+    <color name="card_light_gray">#081a24</color>
+    <color name="card_text_color">#FFFFFF</color>
+    <color name="card_title_color">#FFFFFF</color>
+    <color name="card_preview_color">#FFFFFF</color>
+    <!-- Dark mode chip colors -->
+    <color name="chip_text_color">#000000</color>
+    <color name="chip_text_color_night">#FFFFFF</color>
+    <!-- Dark mode backup colors -->
+    <color name="backup_card_bg">#2A2A2A</color>
+    <color name="backup_button_bg">#FFFFFF</color>
+    <color name="backup_button_text">#000000</color>
+    <color name="backup_text_color">#FFFFFF</color>
     <!-- Add more as needed for your app -->
 </resources> 

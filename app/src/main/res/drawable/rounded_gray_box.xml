@@ -1,5 +1,4 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#E0E0E0"/>
-    <corners android:radius="16dp"/>
-    <padding android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp"/>
-</shape> 
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="true" android:drawable="@drawable/bg_backup_card_day" />
+    <item android:drawable="@drawable/bg_backup_card_day" />
+</selector> 

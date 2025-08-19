@@ -22,14 +22,41 @@ import com.example.diaryapp.ThemeManager
 import com.example.diaryapp.DiaryEntry
 import com.example.diaryapp.DiaryDatabase
 import com.example.diaryapp.EditEntryActivity
+import com.example.diaryapp.HealthConnectService
+import com.example.diaryapp.utils.LocationUtils
+
 import kotlinx.coroutines.*
+import androidx.lifecycle.lifecycleScope
 import java.text.SimpleDateFormat
 import java.util.*
+import java.time.LocalDate
+import java.time.ZoneId
+import android.widget.Toast
+import kotlin.math.roundToInt
+
+
+
 
 class DiaryViewerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDiaryViewerBinding
     private lateinit var imageAdapter: GalleryImageAdapter
     private var currentEntry: DiaryEntry? = null
+    private lateinit var healthConnectService: HealthConnectService
+    
+    // Health data views
+    private lateinit var healthDataSection: View
+    private lateinit var stepsData: TextView
+    private lateinit var sleepData: TextView
+    private lateinit var screenTimeData: TextView
+    
+    // Location views
+
+
+    private lateinit var currentLocationContainer: View
+    private lateinit var currentLocationText: TextView
+    private lateinit var locationUtils: LocationUtils
+    
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Apply theme before super.onCreate
@@ -56,6 +83,30 @@ class DiaryViewerActivity : AppCompatActivity() {
 
         // Setup image gallery
         setupImageGallery()
+        
+        // Initialize health data views
+        healthDataSection = binding.healthDataSection
+        stepsData = binding.stepsData
+        sleepData = binding.sleepData
+        screenTimeData = binding.screenTimeData
+        
+        // Initialize location views
+
+
+        currentLocationContainer = binding.currentLocationContainer
+        currentLocationText = binding.currentLocationText
+        locationUtils = LocationUtils(this@DiaryViewerActivity)
+        
+        // Initialize Health Connect service after views are set up
+        healthConnectService = HealthConnectService.getInstance(this)
+        
+        android.util.Log.d("DiaryViewerActivity", "Health data views initialized: healthDataSection=${healthDataSection != null}, stepsData=${stepsData != null}, sleepData=${sleepData != null}, screenTimeData=${screenTimeData != null}")
+        
+        // Set test text immediately to see if views are working
+        stepsData.text = "TEST DATA"
+        sleepData.text = "TEST DATA"
+        screenTimeData.text = "TEST DATA"
+        healthDataSection.visibility = View.VISIBLE
     }
 
     private fun setupStatusBar() {
@@ -172,15 +223,49 @@ class DiaryViewerActivity : AppCompatActivity() {
             val db = DiaryDatabase.getDatabase(this@DiaryViewerActivity)
             val entry = db.diaryEntryDao().getEntryByDate(entryDate)
             
+            // Convert entry date to LocalDate for step count
+            val entryLocalDate = LocalDate.ofInstant(
+                java.time.Instant.ofEpochMilli(entryDate), 
+                ZoneId.systemDefault()
+            )
+            
+            // Get step count for this date
+            val stepCount = getStepCountForDate(entryLocalDate)
+            
             withContext(Dispatchers.Main) {
                 if (entry != null) {
                     currentEntry = entry
                     displayEntry(entry)
+                    
+
                 } else {
                     finish()
                 }
             }
         }
+    }
+    
+    private suspend fun getStepCountForDate(date: LocalDate): Int {
+        return try {
+            // Only get from Health Connect service - no local database fallback
+            if (healthConnectService.initialize()) {
+                val stepCount = healthConnectService.getStepCountForDate(date)
+                android.util.Log.d("DiaryViewer", "Health Connect service returned $stepCount steps for $date")
+                return stepCount
+            } else {
+                android.util.Log.d("DiaryViewer", "Health Connect service not available")
+            }
+            
+            -1 // Return -1 to indicate no data available
+        } catch (e: Exception) {
+            android.util.Log.e("DiaryViewer", "Error getting step count for date: $date", e)
+            -1
+        }
+    }
+    
+    private fun requestHealthConnectPermissions() {
+        // No permissions needed for step counter sensor
+        android.util.Log.d("DiaryViewer", "No permissions needed for step counter")
     }
 
     private fun displayEntry(entry: DiaryEntry) {
@@ -209,50 +294,105 @@ class DiaryViewerActivity : AppCompatActivity() {
             binding.imageIndicator.visibility = View.GONE
         }
 
-        // Setup mood switch
-        setupMoodSwitch(entry.mood)
+        // Setup saved location display
+        setupSavedLocationDisplay(entry)
+        
+        // Setup location display
+        setupLocationDisplay(entry)
+        
+        // Load health data for this entry
+        loadHealthData(entry)
     }
 
-    private fun setupMoodSwitch(mood: Int) {
-        val moodToggleSwitch = binding.moodToggleSwitch
-        val moodEmoji = binding.moodEmoji
+    private fun setupLocationDisplay(entry: DiaryEntry) {
+        // This function is now handled by setupSavedLocationDisplay
+        // Keeping it empty to avoid any automatic location opening
+    }
 
-        // Set initial state based on mood
-        moodToggleSwitch.isChecked = mood == 1 // 1 = happy, 0 = sad
-
-        // Set switch colors to match day/night theme
-        val isDarkTheme = ThemeManager.isNightMode(this)
-        if (isDarkTheme) {
-            moodToggleSwitch.trackTintList = android.content.res.ColorStateList.valueOf(getColor(android.R.color.darker_gray))
-            moodToggleSwitch.thumbTintList = android.content.res.ColorStateList.valueOf(getColor(android.R.color.white))
+    private fun setupSavedLocationDisplay(entry: DiaryEntry) {
+        // Check if entry has saved location data
+        if (entry.latitude != null && entry.longitude != null) {
+            val cityName = if (entry.address != null) {
+                // Always prefer the full address for city extraction
+                extractCityFromAddress(entry.address)
+            } else if (entry.locationName != null && entry.locationName != "Current Location") {
+                // Only use locationName if it's not "Current Location"
+                extractCityFromAddress(entry.locationName)
+            } else {
+                "Location"
+            }
+            
+            android.util.Log.d("DiaryViewer", "Location data - locationName: ${entry.locationName}, address: ${entry.address}, extracted city: $cityName")
+            
+            currentLocationText.text = cityName
+            currentLocationContainer.visibility = View.VISIBLE
+            
+            // Set click listener to open saved location in Google Maps
+            currentLocationContainer.setOnClickListener {
+                locationUtils.openLocationInMaps(
+                    entry.latitude!!,
+                    entry.longitude!!,
+                    entry.locationName ?: "Location"
+                )
+            }
         } else {
-            moodToggleSwitch.trackTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.greyback))
-            moodToggleSwitch.thumbTintList = android.content.res.ColorStateList.valueOf(getColor(android.R.color.white))
-        }
-
-        // Update emoji based on mood
-        updateMoodDisplay(mood)
-
-        moodToggleSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val newMood = if (isChecked) 1 else 0 // 1 = happy, 0 = sad
-            updateMoodDisplay(newMood)
-            updateMoodInDatabase(newMood)
+            currentLocationContainer.visibility = View.GONE
         }
     }
+    
 
-    private fun updateMoodDisplay(mood: Int) {
-        val moodEmoji = binding.moodEmoji
-        moodEmoji.text = if (mood == 1) "😊" else "😢"
-    }
-
-    private fun updateMoodInDatabase(mood: Int) {
-        currentEntry?.let { entry ->
-            CoroutineScope(Dispatchers.IO).launch {
-                val db = DiaryDatabase.getDatabase(this@DiaryViewerActivity)
-                val updatedEntry = entry.copy(mood = mood)
-                                     db.diaryEntryDao().insertOrUpdate(updatedEntry)
+    
+    private fun extractCityFromAddress(address: String?): String {
+        if (address.isNullOrEmpty()) return "Location"
+        
+        android.util.Log.d("DiaryViewer", "Extracting city from address: $address")
+        
+        // Split address by commas and look for city
+        val parts = address.split(",").map { it.trim() }
+        android.util.Log.d("DiaryViewer", "Address parts: $parts")
+        
+        // First, look for landmark names (usually the first part)
+        val firstPart = parts.firstOrNull()
+        if (firstPart != null && firstPart.length > 3 && firstPart.length <= 25) {
+            // Check if it looks like a landmark name (not a number, not too long)
+            if (!firstPart.matches(Regex("\\d+.*")) && 
+                !firstPart.equals("India", ignoreCase = true) &&
+                !firstPart.matches(Regex(".*\\d+.*")) &&
+                !firstPart.equals("Odisha", ignoreCase = true) &&
+                !firstPart.equals("Khandagiri", ignoreCase = true) &&
+                !firstPart.equals("Kolathia", ignoreCase = true)) {
+                
+                android.util.Log.d("DiaryViewer", "Using landmark name: $firstPart")
+                return firstPart
             }
         }
+        
+        // For Indian addresses: typically format is "Street, Area, City, State PIN, Country"
+        // We want to find the city which is usually the 3rd or 4th part from the end
+        // Skip the last parts (Country, State+PIN) and look for the city
+        
+        // Filter out parts that are likely not cities
+        val cityCandidates = parts.filter { part ->
+            part.isNotEmpty() && 
+            part.length > 2 && 
+            part.length <= 20 &&
+            !part.matches(Regex("\\d{5,6}")) && // Skip postal codes
+            !part.matches(Regex("\\d+\\s*[A-Z]{2}")) && // Skip state codes
+            !part.equals("India", ignoreCase = true) && // Skip country
+            !part.matches(Regex(".*\\d+.*")) && // Skip parts with numbers (like Plus Codes)
+            !part.matches(Regex("Phase [IVX]+", RegexOption.IGNORE_CASE)) && // Skip Phase I, II, etc.
+            !part.matches(Regex("Lane \\d+", RegexOption.IGNORE_CASE)) && // Skip Lane numbers
+            !part.equals("Odisha", ignoreCase = true) && // Skip state names
+            !part.equals("Khandagiri", ignoreCase = true) && // Skip sub-areas
+            !part.equals("Kolathia", ignoreCase = true) // Skip areas
+        }
+        
+        android.util.Log.d("DiaryViewer", "City candidates: $cityCandidates")
+        
+        // Return the first meaningful city candidate, or fallback
+        val result = cityCandidates.firstOrNull() ?: "Location"
+        android.util.Log.d("DiaryViewer", "Final city result: $result")
+        return result
     }
 
     private fun setupImageIndicators(imageCount: Int) {
@@ -333,5 +473,85 @@ class DiaryViewerActivity : AppCompatActivity() {
         super.onResume()
         // Update toolbar colors in case theme changed
         updateToolbarColors()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+    }
+    
+    override fun onLowMemory() {
+        super.onLowMemory()
+    }
+    
+    private fun loadHealthData(entry: DiaryEntry) {
+        // Convert entry date to LocalDate
+        val entryDate = java.time.Instant.ofEpochMilli(entry.date).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        
+        android.util.Log.d("DiaryViewerActivity", "Loading health data for date: $entryDate")
+        
+        // Use coroutine to load health data asynchronously
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // Always show health data section for testing
+                healthDataSection.visibility = View.VISIBLE
+                android.util.Log.d("DiaryViewerActivity", "Health data section visibility set to VISIBLE")
+                
+                // Get health data for this date (now async)
+                val healthData = healthConnectService.getHealthDataForDate(entryDate)
+                android.util.Log.d("DiaryViewerActivity", "Retrieved health data: $healthData")
+                android.util.Log.d("DiaryViewerActivity", "Step count: ${healthData?.stepCount}, Sleep time: ${healthData?.sleepTime}, Screen time: ${healthData?.screenTime}")
+                
+                if (healthData != null && (healthData.stepCount > 0 || healthData.sleepTime != null || healthData.screenTime != null)) {
+                    // Format steps data
+                    val stepsText = if (healthData.stepCount > 0) {
+                        "${healthData.stepCount}"
+                    } else {
+                        "No Data"
+                    }
+                    stepsData.text = stepsText
+                    
+
+                    
+                    // Format sleep data
+                    val sleepText = if (healthData.sleepTime != null && healthData.sleepTime > 0) {
+                        val hours = healthData.sleepTime / 60
+                        val minutes = healthData.sleepTime % 60
+                        "${hours}h${minutes}m"
+                    } else {
+                        "No Data"
+                    }
+                    sleepData.text = sleepText
+                    
+
+                    
+                    // Format screen time data
+                    val screenTimeText = if (healthData.screenTime != null && healthData.screenTime > 0) {
+                        val hours = healthData.screenTime / 60
+                        val minutes = healthData.screenTime % 60
+                        "${hours}h${minutes}m"
+                    } else {
+                        "No Data"
+                    }
+                    screenTimeData.text = screenTimeText
+                    
+
+                } else {
+                    // Show "No Data" when no health data is available
+                    stepsData.text = "No Data"
+                    sleepData.text = "No Data"
+                    screenTimeData.text = "No Data"
+                    android.util.Log.d("DiaryViewerActivity", "No health data available, showing 'No Data'")
+                }
+            } catch (e: Exception) {
+                // Show "No Data" on error
+                stepsData.text = "No Data"
+                sleepData.text = "No Data"
+                screenTimeData.text = "No Data"
+            }
+        }
     }
 } 
