@@ -169,4 +169,4 @@ If you encounter any issues or have questions:
 
 **Made with ❤️ for privacy-conscious users who value their personal digital space.**
 
-*TymeLess - Where your thoughts find their timeless home.* 
+*TymeLess - Make your memories Time less* 
