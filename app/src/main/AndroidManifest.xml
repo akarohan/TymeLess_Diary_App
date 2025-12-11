@@ -87,7 +87,7 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCXQKrNB9J8-pXXeDbiImt9m6P3QOTDG8I" />
+            android:value="" />
         
         <!-- Widget Provider -->
         <receiver
